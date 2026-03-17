@@ -27,6 +27,7 @@
   <main class="page-shell workspace-shell help-shell">
     <nav class="help-toc panel">
       <p class="eyebrow">Contents</p>
+      <a href="#section-setup">0. Setup &amp; Running Locally</a>
       <a href="#section-overview">1. System Overview</a>
       <a href="#section-stack">2. Technical Stack</a>
       <a href="#section-data-layer">3. Data Layer</a>
@@ -38,6 +39,65 @@
     </nav>
 
     <div class="workspace-main">
+      <!-- 0. Setup & Running Locally -->
+      <section id="section-setup" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-setup">
+          0. Setup &amp; Running Locally (XAMPP)
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-setup" class="help-content">
+          <p>This system uses a <strong>Node.js</strong> backend server connected to a <strong>MySQL</strong> database running inside <strong>XAMPP</strong>.</p>
+
+          <h3>Prerequisites</h3>
+          <ul>
+            <li><a href="https://www.apachefriends.org/" target="_blank">XAMPP</a> installed with MySQL module</li>
+            <li><a href="https://nodejs.org/" target="_blank">Node.js</a> v16 or later</li>
+          </ul>
+
+          <h3>Step 1 &mdash; Start XAMPP MySQL</h3>
+          <ol>
+            <li>Open the XAMPP Control Panel.</li>
+            <li>Click <strong>Start</strong> next to <em>MySQL</em> (and optionally Apache).</li>
+          </ol>
+
+          <h3>Step 2 &mdash; Create the Database</h3>
+          <ol>
+            <li>Open <a href="http://localhost/phpmyadmin" target="_blank">phpMyAdmin</a> in your browser.</li>
+            <li>Click the <strong>Import</strong> tab at the top.</li>
+            <li>Choose the file <code>database.sql</code> from this project folder.</li>
+            <li>Click <strong>Go</strong>. This creates the <code>cida_machinery</code> database and its tables.</li>
+          </ol>
+          <p>Alternatively, run via command line:</p>
+          <pre><code>mysql -u root -p &lt; database.sql</code></pre>
+
+          <h3>Step 3 &mdash; Install Node Dependencies</h3>
+          <p>Open a terminal in the project folder and run:</p>
+          <pre><code>npm install</code></pre>
+
+          <h3>Step 4 &mdash; Start the Server</h3>
+          <pre><code>node server.js</code></pre>
+          <p>The server starts at <strong>http://localhost:8000</strong>. Open that URL in your browser.</p>
+
+          <h3>MySQL Connection Settings</h3>
+          <p>The server connects using XAMPP default settings:</p>
+          <ul>
+            <li><strong>Host:</strong> localhost</li>
+            <li><strong>User:</strong> root</li>
+            <li><strong>Password:</strong> <em>(empty)</em></li>
+            <li><strong>Database:</strong> cida_machinery</li>
+          </ul>
+          <p>If you have set a MySQL root password in XAMPP, open <code>server.js</code> and update the <code>password</code> field in the pool configuration.</p>
+
+          <h3>Contractor Feature Flow</h3>
+          <ol>
+            <li>A contractor registers at <a href="contractor-register.html">contractor-register.html</a>. Their account is saved with status <strong>pending</strong>.</li>
+            <li>A CIDA admin logs in and navigates to <strong>Contractor Management</strong> in the admin dashboard to approve or reject the account.</li>
+            <li>Once approved, the contractor can log in at <a href="contractor-login.html">contractor-login.html</a>.</li>
+            <li>After login, contractors can browse available machinery and submit rental requests from the contractor dashboard.</li>
+          </ol>
+        </div>
+      </section>
+
       <!-- 1. System Overview -->
       <section id="section-overview" class="panel">
         <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-overview">
