@@ -1,23 +1,25 @@
 (function () {
-  function getUsersMap() {
-    return CIDA_DB.getData("users").reduce(function (acc, user) {
+  async function getUsersMap() {
+    var users = await CIDA_DB.getData("users");
+    return users.reduce(function (acc, user) {
       acc[user.id] = user;
       return acc;
     }, {});
   }
 
-  function nextRegistrationNumber(machine) {
+  async function nextRegistrationNumber(machine) {
     var year = new Date().getFullYear();
     var prefix = "CIDA-" + machine.type + "-" + year + "-";
-    var count = CIDA_DB.getData("machinery").filter(function (item) {
+    var all = await CIDA_DB.getData("machinery");
+    var count = all.filter(function (item) {
       return item.registrationNumber && item.registrationNumber.indexOf(prefix) === 0;
     }).length;
 
     return prefix + String(count + 1).padStart(3, "0");
   }
 
-  function certifyMachine(id) {
-    var machine = CIDA_DB.findById("machinery", id);
+  async function certifyMachine(id) {
+    var machine = await CIDA_DB.findById("machinery", id);
     var now;
     var nextRenewalCount;
 
@@ -27,9 +29,9 @@
 
     now = Date.now();
     nextRenewalCount = Number(machine.renewalCount || 0) + (machine.status === "pending_renewal" ? 1 : 0);
-    CIDA_DB.update("machinery", id, {
+    await CIDA_DB.update("machinery", id, {
       status: "approved",
-      registrationNumber: machine.registrationNumber || nextRegistrationNumber(machine),
+      registrationNumber: machine.registrationNumber || (await nextRegistrationNumber(machine)),
       registrationDate: now,
       expiryDate: CIDA_UTILS.addYears(now, 1),
       rejectionReason: "",
@@ -39,15 +41,15 @@
     });
   }
 
-  function rejectMachine(id) {
-    var machine = CIDA_DB.findById("machinery", id);
+  async function rejectMachine(id) {
+    var machine = await CIDA_DB.findById("machinery", id);
     var reason = window.prompt("Enter reason for rejection:");
 
     if (!machine || !reason) {
       return;
     }
 
-    CIDA_DB.update("machinery", id, {
+    await CIDA_DB.update("machinery", id, {
       status: "rejected",
       rejectionReason: reason.trim(),
       appeal: null,
@@ -55,21 +57,21 @@
     });
   }
 
-  function revokeMachine(id) {
+  async function revokeMachine(id) {
     var reason = window.prompt("Enter reason for revocation:");
 
     if (!reason) {
       return;
     }
 
-    CIDA_DB.update("machinery", id, {
+    await CIDA_DB.update("machinery", id, {
       status: "revoked",
       rejectionReason: reason.trim(),
     });
   }
 
-  function updateAppeal(id, status, promptText) {
-    var machine = CIDA_DB.findById("machinery", id);
+  async function updateAppeal(id, status, promptText) {
+    var machine = await CIDA_DB.findById("machinery", id);
     var note;
 
     if (!machine || !machine.appeal) {
@@ -77,7 +79,7 @@
     }
 
     note = window.prompt(promptText, machine.appeal.adminNotes || "") || "";
-    CIDA_DB.update("machinery", id, {
+    await CIDA_DB.update("machinery", id, {
       status: status === "accepted" ? "pending" : "rejected",
       appeal: {
         status: status,
@@ -109,10 +111,10 @@
     }
   }
 
-  function openDocumentPreview(machineId, docKey) {
+  async function openDocumentPreview(machineId, docKey) {
     var modal = document.getElementById("dg-document-modal");
     var content = document.getElementById("dg-document-content");
-    var machine = CIDA_DB.findById("machinery", machineId);
+    var machine = await CIDA_DB.findById("machinery", machineId);
     var fileName = machine && machine.documents ? machine.documents[docKey] : "";
     var label = CIDA_UTILS.getDocumentLabel(docKey);
 
@@ -130,16 +132,17 @@
     openModal(modal);
   }
 
-  function renderPending() {
+  async function renderPending() {
     var body = document.getElementById("pending-machinery-body");
-    var users = getUsersMap();
+    var users = await getUsersMap();
     var pendingRows;
 
     if (!body) {
       return;
     }
 
-    pendingRows = CIDA_DB.getData("machinery").filter(function (item) {
+    var all = await CIDA_DB.getData("machinery");
+    pendingRows = all.filter(function (item) {
       return item.status === "pending" || item.status === "pending_renewal";
     });
 
@@ -193,31 +196,32 @@
     });
 
     body.querySelectorAll(".js-certify").forEach(function (button) {
-      button.addEventListener("click", function () {
-        certifyMachine(button.dataset.id);
-        renderAll();
+      button.addEventListener("click", async function () {
+        await certifyMachine(button.dataset.id);
+        await renderAll();
       });
     });
 
     body.querySelectorAll(".js-reject").forEach(function (button) {
-      button.addEventListener("click", function () {
-        rejectMachine(button.dataset.id);
-        renderAll();
+      button.addEventListener("click", async function () {
+        await rejectMachine(button.dataset.id);
+        await renderAll();
       });
     });
   }
 
-  function renderApproved(term) {
+  async function renderApproved(term) {
     var body = document.getElementById("approved-machinery-body");
     var searchTerm = String(term || "").trim().toLowerCase();
-    var users = getUsersMap();
+    var users = await getUsersMap();
     var rows;
 
     if (!body) {
       return;
     }
 
-    rows = CIDA_DB.getData("machinery")
+    var all = await CIDA_DB.getData("machinery");
+    rows = all
       .filter(function (item) {
         return item.status === "approved" || item.status === "revoked";
       })
@@ -260,23 +264,24 @@
       .join("");
 
     body.querySelectorAll(".js-revoke").forEach(function (button) {
-      button.addEventListener("click", function () {
-        revokeMachine(button.dataset.id);
-        renderAll();
+      button.addEventListener("click", async function () {
+        await revokeMachine(button.dataset.id);
+        await renderAll();
       });
     });
   }
 
-  function renderAppeals() {
+  async function renderAppeals() {
     var body = document.getElementById("appeals-body");
-    var users = getUsersMap();
+    var users = await getUsersMap();
     var rows;
 
     if (!body) {
       return;
     }
 
-    rows = CIDA_DB.getData("machinery")
+    var all = await CIDA_DB.getData("machinery");
+    rows = all
       .filter(function (item) {
         return !!item.appeal;
       })
@@ -321,22 +326,22 @@
       .join("");
 
     body.querySelectorAll(".js-accept-appeal").forEach(function (button) {
-      button.addEventListener("click", function () {
-        updateAppeal(button.dataset.id, "accepted", "Optional note for accepted appeal:");
-        renderAll();
+      button.addEventListener("click", async function () {
+        await updateAppeal(button.dataset.id, "accepted", "Optional note for accepted appeal:");
+        await renderAll();
       });
     });
 
     body.querySelectorAll(".js-dismiss-appeal").forEach(function (button) {
-      button.addEventListener("click", function () {
-        updateAppeal(button.dataset.id, "dismissed", "Optional note for dismissed appeal:");
-        renderAll();
+      button.addEventListener("click", async function () {
+        await updateAppeal(button.dataset.id, "dismissed", "Optional note for dismissed appeal:");
+        await renderAll();
       });
     });
   }
 
-  function renderReports() {
-    var rows = CIDA_DB.getData("machinery");
+  async function renderReports() {
+    var rows = await CIDA_DB.getData("machinery");
     var totals = {
       totalRegistrations: rows.length,
       totalApproved: 0,
@@ -376,8 +381,8 @@
     return '"' + String(value == null ? "" : value).replace(/"/g, '""') + '"';
   }
 
-  function exportCsv() {
-    var users = getUsersMap();
+  async function exportCsv() {
+    var users = await getUsersMap();
     var lines = [
       [
         "Registration Number",
@@ -393,7 +398,8 @@
     var blob;
     var link;
 
-    CIDA_DB.getData("machinery").forEach(function (row) {
+    var allMachinery = await CIDA_DB.getData("machinery");
+    allMachinery.forEach(function (row) {
       var owner = users[row.ownerId] || { name: "Unknown" };
       var type = CIDA_UTILS.getMachineryTypeDetails(row.type);
 
@@ -453,8 +459,8 @@
     var exportPdfButton = document.getElementById("export-report-pdf");
 
     if (search) {
-      search.addEventListener("input", function () {
-        renderApproved(search.value);
+      search.addEventListener("input", async function () {
+        await renderApproved(search.value);
       });
     }
 
@@ -473,20 +479,36 @@
     });
   }
 
-  function renderAll() {
-    var search = document.getElementById("dg-approved-search");
-    renderPending();
-    renderApproved(search ? search.value : "");
-    renderAppeals();
-    renderReports();
+  async function renderRegistrationSummary() {
+    try {
+      var res = await fetch("/api/stats");
+      var result = await res.json();
+      if (!result.success) return;
+      var s = result.data;
+      document.getElementById("dg-summary-total-registered").textContent = s.totalRegistered;
+      document.getElementById("dg-summary-total-approved").textContent = s.totalApproved;
+      document.getElementById("dg-summary-total-revoked").textContent = s.totalRevoked;
+      document.getElementById("dg-summary-total-owners").textContent = s.totalOwners;
+    } catch (e) {
+      console.error("Failed to load registration summary:", e);
+    }
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  async function renderAll() {
+    var search = document.getElementById("dg-approved-search");
+    await renderRegistrationSummary();
+    await renderPending();
+    await renderApproved(search ? search.value : "");
+    await renderAppeals();
+    await renderReports();
+  }
+
+  document.addEventListener("DOMContentLoaded", async function () {
     if (document.body.dataset.page !== "director-general-dashboard") {
       return;
     }
 
     wireControls();
-    renderAll();
+    await renderAll();
   });
 })();

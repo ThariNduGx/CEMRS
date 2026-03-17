@@ -28,7 +28,7 @@
         </button>
         <div id="notification-dropdown" class="dropdown-menu" hidden>
           <div class="dropdown-header">
-            <h3>Alerts & Notifications</h3>
+            <h3>Alerts &amp; Notifications</h3>
           </div>
           <ul id="maintenance-alerts-list" class="alerts-list dropdown-list"></ul>
         </div>
@@ -41,16 +41,17 @@
 
   <main class="page-shell workspace-shell">
     <nav class="panel workspace-nav">
-      <p class="eyebrow">Maintenance Menu</p>
-      <a href="#maintenance-dashboard">Dashboard</a>
-      <a href="#maintenance-form-section">Maintenance Record Form</a>
-      <a href="#maintenance-history-section">Maintenance History</a>
+      <p class="eyebrow">Admin Menu</p>
+      <a href="#maintenance-dashboard">Maintenance Overview</a>
+      <a href="#maintenance-history-section">Maintenance Records</a>
+      <a href="#registration-summary-section">Registration Summary</a>
       <a href="#contractors-management-section">Contractor Management</a>
-      <a href="#maintenance-reports-section">Reports</a>
       <a href="#maintenance-settings-section">Settings</a>
     </nav>
 
     <div class="workspace-main">
+
+      <!-- Maintenance Overview -->
       <section id="maintenance-dashboard" class="panel">
         <div class="section-head">
           <div>
@@ -86,74 +87,12 @@
         </div>
       </section>
 
-      <section id="maintenance-form-section" class="panel">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Maintenance Record Form</p>
-            <h2>Create Maintenance Record</h2>
-          </div>
-        </div>
-
-        <form id="maintenance-form" class="grid-form">
-          <label>
-            <span>Equipment ID</span>
-            <input type="text" name="equipmentId" required placeholder="EQ-EX-001">
-          </label>
-          <label>
-            <span>Equipment Name</span>
-            <input type="text" name="equipmentName" required placeholder="Komatsu PC210">
-          </label>
-          <label>
-            <span>Maintenance Date</span>
-            <input type="date" name="maintenanceDate" required>
-          </label>
-          <label>
-            <span>Status</span>
-            <select name="status" required>
-              <option value="scheduled">Scheduled</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="overdue">Overdue</option>
-            </select>
-          </label>
-          <label>
-            <span>Maintenance Type</span>
-            <select name="maintenanceType" required>
-              <option value="service">Service</option>
-              <option value="repair">Repair</option>
-            </select>
-          </label>
-          <label>
-            <span>Location</span>
-            <input type="text" name="location" required placeholder="Colombo">
-          </label>
-          <label>
-            <span>Site</span>
-            <input type="text" name="site" required placeholder="Site A">
-          </label>
-          <label>
-            <span>Registration Certificate of Motor Traffic</span>
-            <input type="file" name="motorTrafficRegistrationCertificate" accept=".pdf,image/*" required>
-          </label>
-          <label>
-            <span>Revenue License</span>
-            <input type="file" name="revenueLicense" accept=".pdf,image/*" required>
-          </label>
-          <label class="grid-span-2">
-            <span>Revenue Report</span>
-            <input type="file" name="revenueReport" accept=".pdf,image/*" required>
-          </label>
-          <button class="button button--primary grid-span-2" type="submit">Save Maintenance Record</button>
-        </form>
-
-        <div id="maintenance-form-feedback" class="feedback" aria-live="polite"></div>
-      </section>
-
+      <!-- Maintenance Records (owner-submitted, read-only) -->
       <section id="maintenance-history-section" class="panel">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Maintenance History</p>
-            <h2>Recorded Maintenance Entries</h2>
+            <p class="eyebrow">Maintenance Records</p>
+            <h2>Owner-Submitted Maintenance Entries</h2>
           </div>
         </div>
 
@@ -161,8 +100,8 @@
           <table>
             <thead>
               <tr>
-                <th>Equipment ID</th>
-                <th>Equipment Name</th>
+                <th>Owner</th>
+                <th>Equipment</th>
                 <th>Maintenance Date</th>
                 <th>Status</th>
                 <th>Type</th>
@@ -175,11 +114,41 @@
         </div>
       </section>
 
+      <!-- Registration Summary -->
+      <section id="registration-summary-section" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Registration Summary</p>
+            <h2>Equipment &amp; Owner Overview</h2>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span>Total Registered Equipment</span>
+            <strong id="summary-total-registered">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Approved Certificates</span>
+            <strong id="summary-total-approved">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Revoked Certificates</span>
+            <strong id="summary-total-revoked">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Registered Owners</span>
+            <strong id="summary-total-owners">0</strong>
+          </article>
+        </div>
+      </section>
+
+      <!-- Contractor Management -->
       <section id="contractors-management-section" class="panel" style="display: none;">
         <div class="section-head">
           <div>
             <p class="eyebrow">Contractor Accounts</p>
-            <h2>Pending Approvals & Registrations</h2>
+            <h2>Pending Approvals &amp; Registrations</h2>
           </div>
         </div>
 
@@ -203,42 +172,12 @@
         <div id="admin-contractor-feedback" class="feedback"></div>
       </section>
 
-      <section id="maintenance-reports-section" class="panel">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Reports</p>
-            <h2>Maintenance Reporting</h2>
-          </div>
-        </div>
-
-        <div class="stats-grid stats-grid--three">
-          <article class="stat-card">
-            <span>Scheduled</span>
-            <strong id="maintenance-report-scheduled">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>In Progress</span>
-            <strong id="maintenance-report-progress">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>Overdue</span>
-            <strong id="maintenance-report-overdue">0</strong>
-          </article>
-        </div>
-
-        <div class="report-grid">
-          <div>
-            <h3>Records by Status</h3>
-            <ul id="maintenance-status-breakdown" class="report-list"></ul>
-          </div>
-        </div>
-      </section>
-
+      <!-- Settings -->
       <section id="maintenance-settings-section" class="panel">
         <div class="section-head">
           <div>
             <p class="eyebrow">Settings</p>
-            <h2>Maintenance Preferences</h2>
+            <h2>Notification Preferences</h2>
           </div>
         </div>
 
@@ -247,23 +186,13 @@
             <span>Notification Window (days)</span>
             <input id="maintenance-notification-window" type="number" name="notificationWindow" min="1" max="30" value="7" required>
           </label>
-          <label>
-            <span>Default Status</span>
-            <select id="maintenance-default-status" name="defaultStatus" required>
-              <option value="scheduled">Scheduled</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="overdue">Overdue</option>
-            </select>
-          </label>
-          <button class="button button--primary grid-span-2" type="submit">Save Settings</button>
+          <button class="button button--primary" type="submit">Save Settings</button>
         </form>
 
         <div id="maintenance-settings-feedback" class="feedback" aria-live="polite"></div>
       </section>
+
     </div>
-
-
   </main>
 
   <script src="js/db.js"></script>
