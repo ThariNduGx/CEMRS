@@ -626,23 +626,28 @@
   }
 
   document.addEventListener("DOMContentLoaded", async function () {
-    var owner;
+    var page = document.body.dataset.page;
 
-    if (document.body.dataset.page !== "owner-dashboard") {
+    if (page !== "owner-dashboard" && page !== "owner-maintenance-dashboard") {
       return;
     }
 
-    owner = await CIDA_AUTH.getCurrentUser();
+    var owner = await CIDA_AUTH.getCurrentUser();
     if (!owner) {
       return;
     }
 
-    wireModalControls();
-    wireAppealForm(owner.id);
-    wireForm(owner);
-    wireMaintenanceForm(owner);
-    await renderPage(owner);
-    await populateMaintenanceMachineDropdown(owner.id);
-    await renderOwnerMaintenanceTable(owner.id);
+    if (page === "owner-dashboard") {
+      wireModalControls();
+      wireAppealForm(owner.id);
+      wireForm(owner);
+      await renderPage(owner);
+    }
+
+    if (page === "owner-maintenance-dashboard") {
+      wireMaintenanceForm(owner);
+      await populateMaintenanceMachineDropdown(owner.id);
+      await renderOwnerMaintenanceTable(owner.id);
+    }
   });
 })();

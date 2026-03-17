@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintenance Dashboard – Owner</title>
+  <style>
+    body { background-color: #0f1115; }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="owner-maintenance-dashboard">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Owner Workspace</p>
+      <h1>Maintenance Dashboard</h1>
+    </div>
+    <div class="topbar__actions">
+      <a class="button button--ghost" href="owner-dashboard.html">Machinery Registration</a>
+      <a class="button button--ghost" href="help.html">Help</a>
+      <span id="owner-user-summary" class="pill"></span>
+      <button id="logout-button" class="button button--ghost" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="page-shell page-shell--dashboard">
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">New Entry</p>
+          <h2>Log Maintenance Record</h2>
+        </div>
+      </div>
+
+      <form id="owner-maintenance-form" class="grid-form">
+        <label class="grid-span-2">
+          <span>Select Equipment</span>
+          <select id="owner-maintenance-machine" name="machineId" required>
+            <option value="">Select your registered equipment</option>
+          </select>
+        </label>
+        <label>
+          <span>Maintenance Date</span>
+          <input type="date" name="maintenanceDate" required>
+        </label>
+        <label>
+          <span>Maintenance Type</span>
+          <select name="maintenanceType" required>
+            <option value="service">Service</option>
+            <option value="repair">Repair</option>
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select name="status" required>
+            <option value="scheduled">Scheduled</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="overdue">Overdue</option>
+          </select>
+        </label>
+        <label>
+          <span>Location</span>
+          <input type="text" name="location" required placeholder="e.g. Colombo">
+        </label>
+        <label>
+          <span>Site</span>
+          <input type="text" name="site" required placeholder="e.g. Site A">
+        </label>
+        <label>
+          <span>Registration Certificate of Motor Traffic</span>
+          <input type="file" name="motorTrafficRegistrationCertificate" accept=".pdf,image/*">
+        </label>
+        <label>
+          <span>Revenue License</span>
+          <input type="file" name="revenueLicense" accept=".pdf,image/*">
+        </label>
+        <label class="grid-span-2">
+          <span>Revenue Report</span>
+          <input type="file" name="revenueReport" accept=".pdf,image/*">
+        </label>
+        <button class="button button--primary grid-span-2" type="submit" style="margin-top: 1rem;">Save Maintenance Record</button>
+      </form>
+
+      <div id="owner-maintenance-feedback" class="feedback" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">History</p>
+          <h2>Your Maintenance Records</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Equipment</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Location / Site</th>
+            </tr>
+          </thead>
+          <tbody id="owner-maintenance-body">
+            <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/owner.js"></script>
+</body>
+</html>

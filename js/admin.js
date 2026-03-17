@@ -211,15 +211,44 @@
 
   async function renderAll() {
     var records = await getMaintenanceRecords();
-    var users = await CIDA_DB.getData("users");
-    var usersMap = users.reduce(function (acc, u) {
-      acc[u.id] = u;
-      return acc;
-    }, {});
-    renderDashboard(records);
-    renderHistory(records, usersMap);
     renderAlerts(records);
     await renderRegistrationSummary();
+  }
+
+  function wireAdminReportForm() {
+    var form = document.getElementById("admin-maintenance-report-form");
+    var feedback = document.getElementById("admin-report-feedback");
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      CIDA_UTILS.setFeedback(feedback, "Submitting...", "info");
+
+      var formData = new FormData(form);
+      var payload = {
+        equipmentName: String(formData.get("equipmentName") || "").trim(),
+        equipmentId: String(formData.get("equipmentId") || "").trim(),
+        maintenanceDate: String(formData.get("maintenanceDate") || ""),
+        maintenanceType: String(formData.get("maintenanceType") || "service"),
+        status: String(formData.get("status") || "scheduled"),
+        location: String(formData.get("location") || "").trim(),
+        site: String(formData.get("site") || "").trim(),
+        documents: {},
+        createdAt: Date.now(),
+      };
+
+      var result = await CIDA_DB.insert("maintenance", payload);
+      if (result) {
+        form.reset();
+        CIDA_UTILS.setFeedback(feedback, "Maintenance report submitted successfully.", "success");
+        var records = await getMaintenanceRecords();
+        renderAlerts(records);
+      } else {
+        CIDA_UTILS.setFeedback(feedback, "Failed to submit report. Please try again.", "error");
+      }
+    });
   }
 
   function wireSettings() {
@@ -388,6 +417,7 @@
       });
     }
 
+    wireAdminReportForm();
     wireSettings();
     wireNavigation();
     await renderAll();
