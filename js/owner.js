@@ -518,6 +518,113 @@
     }
   }
 
+  // ─── Maintenance section ──────────────────────────────────────────────────
+
+  function formatMaintenanceStatus(status) {
+    return String(status || "").replace(/_/g, " ").replace(/\b\w/g, function (l) { return l.toUpperCase(); });
+  }
+
+  async function populateMaintenanceMachineDropdown(ownerId) {
+    var select = document.getElementById("owner-maintenance-machine");
+    if (!select) {
+      return;
+    }
+
+    var records = await getOwnerRecords(ownerId);
+    select.innerHTML =
+      '<option value="">Select your registered equipment</option>' +
+      records
+        .map(function (m) {
+          var label = m.makeModel + (m.registrationNumber ? " (" + m.registrationNumber + ")" : " [" + m.status + "]");
+          return (
+            '<option value="' + CIDA_UTILS.escapeHtml(m.id) + '"' +
+            ' data-name="' + CIDA_UTILS.escapeHtml(m.makeModel) + '"' +
+            ' data-regnum="' + CIDA_UTILS.escapeHtml(m.registrationNumber || m.id) + '">' +
+            CIDA_UTILS.escapeHtml(label) +
+            "</option>"
+          );
+        })
+        .join("");
+  }
+
+  async function renderOwnerMaintenanceTable(ownerId) {
+    var body = document.getElementById("owner-maintenance-body");
+    if (!body) {
+      return;
+    }
+
+    var records = await CIDA_DB.getData("maintenance", { ownerId: ownerId });
+    records = records.slice().sort(function (a, b) {
+      return new Date(b.maintenanceDate || 0).getTime() - new Date(a.maintenanceDate || 0).getTime();
+    });
+
+    if (!records.length) {
+      body.innerHTML = '<tr><td colspan="5" class="empty-state">No maintenance records submitted yet.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = records
+      .map(function (record) {
+        return (
+          "<tr>" +
+          "<td>" + CIDA_UTILS.escapeHtml(record.equipmentName) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(record.maintenanceDate || "-") + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(record.maintenanceType === "repair" ? "Repair" : "Service") + "</td>" +
+          '<td><span class="badge badge--' + CIDA_UTILS.escapeHtml(record.status) + '">' +
+          CIDA_UTILS.escapeHtml(formatMaintenanceStatus(record.status)) + "</span></td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(record.location + (record.site ? " / " + record.site : "")) + "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+  }
+
+  function wireMaintenanceForm(owner) {
+    var form = document.getElementById("owner-maintenance-form");
+    var feedback = document.getElementById("owner-maintenance-feedback");
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      var formData = new FormData(form);
+      var machineId = String(formData.get("machineId") || "");
+      var select = document.getElementById("owner-maintenance-machine");
+      var selectedOption = select ? select.querySelector('option[value="' + machineId + '"]') : null;
+
+      if (!machineId) {
+        CIDA_UTILS.setFeedback(feedback, "Please select equipment.", "error");
+        return;
+      }
+
+      var equipmentName = selectedOption ? selectedOption.dataset.name : machineId;
+      var equipmentId = selectedOption ? selectedOption.dataset.regnum : machineId;
+
+      await CIDA_DB.insert("maintenance", {
+        ownerId: owner.id,
+        equipmentId: equipmentId,
+        equipmentName: equipmentName,
+        maintenanceDate: String(formData.get("maintenanceDate") || ""),
+        status: String(formData.get("status") || "scheduled"),
+        maintenanceType: String(formData.get("maintenanceType") || "service"),
+        location: String(formData.get("location") || "").trim(),
+        site: String(formData.get("site") || "").trim(),
+        documents: {
+          motorTrafficRegistrationCertificate: (formData.get("motorTrafficRegistrationCertificate") || {}).name || "",
+          revenueLicense: (formData.get("revenueLicense") || {}).name || "",
+          revenueReport: (formData.get("revenueReport") || {}).name || "",
+        },
+        createdAt: Date.now(),
+      });
+
+      form.reset();
+      await populateMaintenanceMachineDropdown(owner.id);
+      await renderOwnerMaintenanceTable(owner.id);
+      CIDA_UTILS.setFeedback(feedback, "Maintenance record saved.", "success");
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", async function () {
     var owner;
 
@@ -533,6 +640,9 @@
     wireModalControls();
     wireAppealForm(owner.id);
     wireForm(owner);
+    wireMaintenanceForm(owner);
     await renderPage(owner);
+    await populateMaintenanceMachineDropdown(owner.id);
+    await renderOwnerMaintenanceTable(owner.id);
   });
 })();

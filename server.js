@@ -72,6 +72,7 @@ function mapMachinery(row) {
 function mapMaintenance(row) {
     return {
         id: row.id,
+        ownerId: row.owner_id || null,
         equipmentId: row.equipment_id,
         equipmentName: row.equipment_name,
         maintenanceDate: row.maintenance_date,
@@ -106,6 +107,7 @@ const machineryFieldMap = {
 };
 
 const maintenanceFieldMap = {
+    ownerId: 'owner_id',
     equipmentId: 'equipment_id',
     equipmentName: 'equipment_name',
     maintenanceDate: 'maintenance_date',
@@ -193,16 +195,16 @@ async function seedDatabase(conn) {
     }
 
     const seedMaintenance = [
-        { id: 'mt_001', equipmentId: 'EQ-EX-001', equipmentName: 'Komatsu PC210',    maintenanceDate: new Date(now - DAY*3).toISOString().slice(0,10), status: 'completed', maintenanceType: 'service', location: 'Colombo',    site: 'Site A',              documents: { motorTrafficRegistrationCertificate: 'pc210-motor-traffic.pdf', revenueLicense: 'pc210-revenue-license.pdf', revenueReport: 'pc210-revenue-report.pdf' }, createdAt: now - DAY*3 },
-        { id: 'mt_002', equipmentId: 'EQ-WL-004', equipmentName: 'Caterpillar 950M', maintenanceDate: new Date(now + DAY*2).toISOString().slice(0,10), status: 'scheduled', maintenanceType: 'repair',  location: 'Gampaha',    site: 'Depot 2',             documents: { motorTrafficRegistrationCertificate: '950m-motor-traffic.pdf', revenueLicense: '950m-revenue-license.pdf', revenueReport: '950m-revenue-report.pdf' }, createdAt: now - DAY*1 },
-        { id: 'mt_003', equipmentId: 'EQ-RL-007', equipmentName: 'Dynapac CA250',    maintenanceDate: new Date(now - DAY*1).toISOString().slice(0,10), status: 'overdue',   maintenanceType: 'service', location: 'Kurunegala', site: 'Road Project North',  documents: { motorTrafficRegistrationCertificate: 'ca250-motor-traffic.pdf', revenueLicense: 'ca250-revenue-license.pdf', revenueReport: 'ca250-revenue-report.pdf' }, createdAt: now - DAY*8 },
+        { id: 'mt_001', ownerId: 'u_owner_001', equipmentId: 'CIDA-EX-2026-PC210',  equipmentName: 'Komatsu PC210',    maintenanceDate: new Date(now - DAY*3).toISOString().slice(0,10), status: 'completed', maintenanceType: 'service', location: 'Colombo',    site: 'Site A',             documents: { motorTrafficRegistrationCertificate: 'pc210-motor-traffic.pdf', revenueLicense: 'pc210-revenue-license.pdf', revenueReport: 'pc210-revenue-report.pdf' }, createdAt: now - DAY*3 },
+        { id: 'mt_002', ownerId: 'u_owner_001', equipmentId: 'CIDA-WL-2026-001',    equipmentName: 'Caterpillar 950M', maintenanceDate: new Date(now + DAY*2).toISOString().slice(0,10), status: 'scheduled', maintenanceType: 'repair',  location: 'Gampaha',    site: 'Depot 2',            documents: { motorTrafficRegistrationCertificate: '950m-motor-traffic.pdf', revenueLicense: '950m-revenue-license.pdf', revenueReport: '950m-revenue-report.pdf' }, createdAt: now - DAY*1 },
+        { id: 'mt_003', ownerId: 'u_owner_001', equipmentId: 'CIDA-RLR-2025-014',   equipmentName: 'Dynapac CA250',    maintenanceDate: new Date(now - DAY*1).toISOString().slice(0,10), status: 'overdue',   maintenanceType: 'service', location: 'Kurunegala', site: 'Road Project North', documents: { motorTrafficRegistrationCertificate: 'ca250-motor-traffic.pdf', revenueLicense: 'ca250-revenue-license.pdf', revenueReport: 'ca250-revenue-report.pdf' }, createdAt: now - DAY*8 },
     ];
 
     for (const mt of seedMaintenance) {
         await conn.execute(
-            `INSERT INTO maintenance (id, equipment_id, equipment_name, maintenance_date, status, maintenance_type, location, site, documents, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [mt.id, mt.equipmentId, mt.equipmentName, mt.maintenanceDate, mt.status, mt.maintenanceType, mt.location, mt.site, JSON.stringify(mt.documents), mt.createdAt]
+            `INSERT INTO maintenance (id, owner_id, equipment_id, equipment_name, maintenance_date, status, maintenance_type, location, site, documents, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [mt.id, mt.ownerId, mt.equipmentId, mt.equipmentName, mt.maintenanceDate, mt.status, mt.maintenanceType, mt.location, mt.site, JSON.stringify(mt.documents), mt.createdAt]
         );
     }
 
@@ -285,6 +287,7 @@ async function seedDatabase(conn) {
         await conn.execute(`
             CREATE TABLE IF NOT EXISTS maintenance (
                 id VARCHAR(50) NOT NULL,
+                owner_id VARCHAR(50) DEFAULT NULL,
                 equipment_id VARCHAR(100) NOT NULL,
                 equipment_name VARCHAR(150) NOT NULL,
                 maintenance_date VARCHAR(10) NOT NULL,
@@ -297,6 +300,11 @@ async function seedDatabase(conn) {
                 PRIMARY KEY (id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         `);
+
+        // Migrate existing maintenance table to add owner_id if missing
+        try {
+            await conn.execute('ALTER TABLE maintenance ADD COLUMN owner_id VARCHAR(50) DEFAULT NULL AFTER id');
+        } catch (e) { /* column already exists */ }
 
         await seedDatabase(conn);
         conn.release();
@@ -468,10 +476,16 @@ app.patch('/api/machinery/:id', async (req, res) => {
 
 // ─── Maintenance API ──────────────────────────────────────────────────────────
 
-// GET /api/maintenance
+// GET /api/maintenance   (optional ?ownerId=)
 app.get('/api/maintenance', async (req, res) => {
     try {
-        const [rows] = await pool.execute('SELECT * FROM maintenance ORDER BY created_at DESC');
+        let query = 'SELECT * FROM maintenance ORDER BY created_at DESC';
+        let params = [];
+        if (req.query.ownerId) {
+            query = 'SELECT * FROM maintenance WHERE owner_id = ? ORDER BY created_at DESC';
+            params = [req.query.ownerId];
+        }
+        const [rows] = await pool.execute(query, params);
         res.json({ success: true, data: rows.map(mapMaintenance) });
     } catch (err) {
         console.error(err);
@@ -485,17 +499,41 @@ app.post('/api/maintenance', async (req, res) => {
         const mt = req.body;
         const id = generateId('mt');
         await pool.execute(
-            `INSERT INTO maintenance (id, equipment_id, equipment_name, maintenance_date, status, maintenance_type, location, site, documents, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO maintenance (id, owner_id, equipment_id, equipment_name, maintenance_date, status, maintenance_type, location, site, documents, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                id, mt.equipmentId || '', mt.equipmentName || '', mt.maintenanceDate || '',
-                mt.status || 'scheduled', mt.maintenanceType || 'service',
+                id, mt.ownerId || null, mt.equipmentId || '', mt.equipmentName || '',
+                mt.maintenanceDate || '', mt.status || 'scheduled', mt.maintenanceType || 'service',
                 mt.location || '', mt.site || '',
                 JSON.stringify(mt.documents || {}), mt.createdAt || Date.now()
             ]
         );
         const [[row]] = await pool.execute('SELECT * FROM maintenance WHERE id = ? LIMIT 1', [id]);
         res.json({ success: true, data: mapMaintenance(row) });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: 'Database error occurred.' });
+    }
+});
+
+// ─── Stats API ────────────────────────────────────────────────────────────────
+
+// GET /api/stats
+app.get('/api/stats', async (req, res) => {
+    try {
+        const [[{ totalRegistered }]] = await pool.execute('SELECT COUNT(*) AS totalRegistered FROM machinery');
+        const [[{ totalApproved }]]   = await pool.execute('SELECT COUNT(*) AS totalApproved FROM machinery WHERE status = "approved"');
+        const [[{ totalRevoked }]]    = await pool.execute('SELECT COUNT(*) AS totalRevoked FROM machinery WHERE status = "revoked"');
+        const [[{ totalOwners }]]     = await pool.execute('SELECT COUNT(*) AS totalOwners FROM users WHERE role = "owner"');
+        res.json({
+            success: true,
+            data: {
+                totalRegistered: Number(totalRegistered),
+                totalApproved: Number(totalApproved),
+                totalRevoked: Number(totalRevoked),
+                totalOwners: Number(totalOwners)
+            }
+        });
     } catch (err) {
         console.error(err);
         res.json({ success: false, message: 'Database error occurred.' });

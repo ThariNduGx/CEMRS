@@ -479,8 +479,24 @@
     });
   }
 
+  async function renderRegistrationSummary() {
+    try {
+      var res = await fetch("/api/stats");
+      var result = await res.json();
+      if (!result.success) return;
+      var s = result.data;
+      document.getElementById("dg-summary-total-registered").textContent = s.totalRegistered;
+      document.getElementById("dg-summary-total-approved").textContent = s.totalApproved;
+      document.getElementById("dg-summary-total-revoked").textContent = s.totalRevoked;
+      document.getElementById("dg-summary-total-owners").textContent = s.totalOwners;
+    } catch (e) {
+      console.error("Failed to load registration summary:", e);
+    }
+  }
+
   async function renderAll() {
     var search = document.getElementById("dg-approved-search");
+    await renderRegistrationSummary();
     await renderPending();
     await renderApproved(search ? search.value : "");
     await renderAppeals();

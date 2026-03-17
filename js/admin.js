@@ -6,13 +6,9 @@
     try {
       return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {
         notificationWindow: 7,
-        defaultStatus: "scheduled",
       };
     } catch (error) {
-      return {
-        notificationWindow: 7,
-        defaultStatus: "scheduled",
-      };
+      return { notificationWindow: 7 };
     }
   }
 
@@ -95,7 +91,7 @@
       .join("");
   }
 
-  function renderHistory(records) {
+  function renderHistory(records, usersMap) {
     var body = document.getElementById("maintenance-history-body");
 
     if (!records.length) {
@@ -105,10 +101,12 @@
 
     body.innerHTML = records
       .map(function (record) {
+        var owner = (usersMap && record.ownerId && usersMap[record.ownerId]) ? usersMap[record.ownerId] : null;
+        var ownerName = owner ? owner.name : (record.ownerId ? "Unknown Owner" : "—");
         return (
           "<tr>" +
-          "<td>" + CIDA_UTILS.escapeHtml(record.equipmentId) + "</td>" +
-          "<td>" + CIDA_UTILS.escapeHtml(record.equipmentName) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(ownerName) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(record.equipmentName) + "<br><span class='muted' style='font-size:.8em'>" + CIDA_UTILS.escapeHtml(record.equipmentId) + "</span></td>" +
           "<td>" + CIDA_UTILS.escapeHtml(record.maintenanceDate || "-") + "</td>" +
           '<td><span class="badge badge--' + CIDA_UTILS.escapeHtml(record.status) + '">' + CIDA_UTILS.escapeHtml(formatStatus(record.status)) + "</span></td>" +
           "<td>" + CIDA_UTILS.escapeHtml(formatType(record.maintenanceType)) + "</td>" +
@@ -133,15 +131,20 @@
       counts[record.status] = (counts[record.status] || 0) + 1;
     });
 
-    document.getElementById("maintenance-report-scheduled").textContent = counts.scheduled;
-    document.getElementById("maintenance-report-progress").textContent = counts.in_progress;
-    document.getElementById("maintenance-report-overdue").textContent = counts.overdue;
+    var scheduledEl = document.getElementById("maintenance-report-scheduled");
+    var progressEl = document.getElementById("maintenance-report-progress");
+    var overdueEl = document.getElementById("maintenance-report-overdue");
+    if (scheduledEl) scheduledEl.textContent = counts.scheduled;
+    if (progressEl) progressEl.textContent = counts.in_progress;
+    if (overdueEl) overdueEl.textContent = counts.overdue;
 
-    breakdown.innerHTML = Object.keys(counts)
-      .map(function (status) {
-        return "<li><span>" + CIDA_UTILS.escapeHtml(formatStatus(status)) + "</span><strong>" + counts[status] + "</strong></li>";
-      })
-      .join("");
+    if (breakdown) {
+      breakdown.innerHTML = Object.keys(counts)
+        .map(function (status) {
+          return "<li><span>" + CIDA_UTILS.escapeHtml(formatStatus(status)) + "</span><strong>" + counts[status] + "</strong></li>";
+        })
+        .join("");
+    }
   }
 
   function renderAlerts(records) {
@@ -185,84 +188,53 @@
           " &bull; " +
           CIDA_UTILS.escapeHtml(record.location) +
           "</span>" +
-          '<div class="action-row" style="margin-top: 0.5rem;">' +
-          '<button type="button" class="button button--ghost" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">View Details</button>' +
-          '<button type="button" class="button button--ghost" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; color: var(--text-muted); border-color: transparent;">Dismiss</button>' +
-          '</div>' +
           "</li>"
         );
       })
       .join("");
   }
 
-  async function renderAll() {
-    var records = await getMaintenanceRecords();
-    renderDashboard(records);
-    renderHistory(records);
-    renderReports(records);
-    renderAlerts(records);
+  async function renderRegistrationSummary() {
+    try {
+      var res = await fetch("/api/stats");
+      var result = await res.json();
+      if (!result.success) return;
+      var s = result.data;
+      document.getElementById("summary-total-registered").textContent = s.totalRegistered;
+      document.getElementById("summary-total-approved").textContent = s.totalApproved;
+      document.getElementById("summary-total-revoked").textContent = s.totalRevoked;
+      document.getElementById("summary-total-owners").textContent = s.totalOwners;
+    } catch (e) {
+      console.error("Failed to load registration summary:", e);
+    }
   }
 
-  function wireForm() {
-    var form = document.getElementById("maintenance-form");
-    var feedback = document.getElementById("maintenance-form-feedback");
-    var statusField;
-
-    if (!form) {
-      return;
-    }
-
-    statusField = form.querySelector('[name="status"]');
-    if (statusField) {
-      statusField.value = readSettings().defaultStatus;
-    }
-
-    form.addEventListener("submit", async function (event) {
-      var formData;
-      var settings;
-
-      event.preventDefault();
-      formData = new FormData(form);
-      settings = readSettings();
-
-      await CIDA_DB.insert("maintenance", {
-        equipmentId: String(formData.get("equipmentId") || "").trim(),
-        equipmentName: String(formData.get("equipmentName") || "").trim(),
-        maintenanceDate: String(formData.get("maintenanceDate") || "").trim(),
-        status: String(formData.get("status") || settings.defaultStatus),
-        maintenanceType: String(formData.get("maintenanceType") || "service"),
-        location: String(formData.get("location") || "").trim(),
-        site: String(formData.get("site") || "").trim(),
-        documents: {
-          motorTrafficRegistrationCertificate: (formData.get("motorTrafficRegistrationCertificate") || {}).name || "",
-          revenueLicense: (formData.get("revenueLicense") || {}).name || "",
-          revenueReport: (formData.get("revenueReport") || {}).name || "",
-        },
-        createdAt: Date.now(),
-      });
-
-      form.reset();
-      if (statusField) {
-        statusField.value = settings.defaultStatus;
-      }
-      CIDA_UTILS.setFeedback(feedback, "Maintenance record saved successfully.", "success");
-      await renderAll();
-    });
+  async function renderAll() {
+    var records = await getMaintenanceRecords();
+    var users = await CIDA_DB.getData("users");
+    var usersMap = users.reduce(function (acc, u) {
+      acc[u.id] = u;
+      return acc;
+    }, {});
+    renderDashboard(records);
+    renderHistory(records, usersMap);
+    renderAlerts(records);
+    await renderRegistrationSummary();
   }
 
   function wireSettings() {
     var form = document.getElementById("maintenance-settings-form");
     var feedback = document.getElementById("maintenance-settings-feedback");
-    var settings = readSettings();
-    var defaultStatusField = document.getElementById("maintenance-default-status");
     var notificationWindowField = document.getElementById("maintenance-notification-window");
+    var settings = readSettings();
 
     if (!form) {
       return;
     }
 
-    defaultStatusField.value = settings.defaultStatus;
-    notificationWindowField.value = settings.notificationWindow;
+    if (notificationWindowField) {
+      notificationWindowField.value = settings.notificationWindow;
+    }
 
     form.addEventListener("submit", async function (event) {
       var formData;
@@ -272,22 +244,20 @@
       formData = new FormData(form);
       nextSettings = {
         notificationWindow: Number(formData.get("notificationWindow") || 7),
-        defaultStatus: String(formData.get("defaultStatus") || "scheduled"),
       };
 
       saveSettings(nextSettings);
-      document.getElementById("maintenance-form").querySelector('[name="status"]').value = nextSettings.defaultStatus;
-      CIDA_UTILS.setFeedback(feedback, "Maintenance settings updated.", "success");
+      CIDA_UTILS.setFeedback(feedback, "Settings updated.", "success");
       renderAlerts(await getMaintenanceRecords());
     });
   }
 
-  // --- New Contractor Management Functions --- //
+  // --- Contractor Management --- //
 
   async function loadContractors() {
     var tbody = document.getElementById("admin-contractors-body");
     var feedback = document.getElementById("admin-contractor-feedback");
-    
+
     if (!tbody) return;
 
     try {
@@ -303,7 +273,7 @@
         tbody.innerHTML = result.contractors.map(function(c) {
           var statusStyle = c.status === 'approved' ? 'color: var(--success);' : (c.status === 'rejected' ? 'color: var(--danger);' : 'color: var(--warning);');
           var actionButtons = '';
-          
+
           if (c.status === 'pending') {
             actionButtons = '<button class="button button--ghost txt-success btn-approve" data-id="' + c.id + '">Approve</button>' +
                             '<button class="button button--ghost txt-danger btn-reject" data-id="' + c.id + '">Reject</button>';
@@ -321,14 +291,13 @@
           '</tr>';
         }).join('');
 
-        // Wire buttons
         var approveBtns = tbody.querySelectorAll('.btn-approve');
         var rejectBtns = tbody.querySelectorAll('.btn-reject');
 
         approveBtns.forEach(function(btn) {
            btn.addEventListener('click', function() { updateContractorStatus(this.dataset.id, 'approve', feedback); });
         });
-        
+
         rejectBtns.forEach(function(btn) {
            btn.addEventListener('click', function() { updateContractorStatus(this.dataset.id, 'reject', feedback); });
         });
@@ -344,21 +313,21 @@
 
   async function updateContractorStatus(id, action, feedbackEl) {
     if(!confirm("Are you sure you want to " + action + " this contractor?")) return;
-    
+
     CIDA_UTILS.setFeedback(feedbackEl, "Updating...", "info");
-    
+
     try {
       var response = await fetch('api/admin_contractors.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contractor_id: id, action: action })
       });
-      
+
       var result = await response.json();
-      
+
       if(result.success) {
          CIDA_UTILS.setFeedback(feedbackEl, result.message, "success");
-         loadContractors(); // reload table
+         loadContractors();
       } else {
          CIDA_UTILS.setFeedback(feedbackEl, result.message, "error");
       }
@@ -366,39 +335,36 @@
        CIDA_UTILS.setFeedback(feedbackEl, "Failed to update contractor.", "error");
     }
   }
-  
+
   function wireNavigation() {
-      // Handle the sidebar navigation to toggle sections
-      var navLinks = document.querySelectorAll(".workspace-nav a");
-      var panels = document.querySelectorAll(".workspace-main > section");
+    var navLinks = document.querySelectorAll(".workspace-nav a");
+    var panels = document.querySelectorAll(".workspace-main > section");
 
-      navLinks.forEach(function (link) {
-        link.addEventListener("click", function (e) {
-          e.preventDefault();
-          var targetId = this.getAttribute("href").substring(1);
+    navLinks.forEach(function (link) {
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        var targetId = this.getAttribute("href").substring(1);
 
-          navLinks.forEach(function (l) { l.classList.remove("active"); });
-          this.classList.add("active");
+        navLinks.forEach(function (l) { l.classList.remove("active"); });
+        this.classList.add("active");
 
-          panels.forEach(function (panel) {
-            if (panel.id === targetId) {
-              panel.style.display = "";
-            } else {
-              panel.style.display = "none";
-            }
-          });
-          
-          if(targetId === "contractors-management-section") {
-              loadContractors();
-          }
+        panels.forEach(function (panel) {
+          panel.style.display = panel.id === targetId ? "" : "none";
         });
+
+        if (targetId === "contractors-management-section") {
+          loadContractors();
+        }
+        if (targetId === "registration-summary-section") {
+          renderRegistrationSummary();
+        }
       });
-      
-      // Set initial state
-      if (navLinks.length > 0) {
-        navLinks[0].classList.add("active");
-        panels.forEach(function(p, i) { if(i>0) p.style.display = "none"; });
-      }
+    });
+
+    if (navLinks.length > 0) {
+      navLinks[0].classList.add("active");
+      panels.forEach(function(p, i) { if (i > 0) p.style.display = "none"; });
+    }
   }
 
   document.addEventListener("DOMContentLoaded", async function () {
@@ -422,7 +388,6 @@
       });
     }
 
-    wireForm();
     wireSettings();
     wireNavigation();
     await renderAll();

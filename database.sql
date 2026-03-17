@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS `machinery` (
 -- ----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `maintenance` (
   `id`               VARCHAR(50)   NOT NULL,
+  `owner_id`         VARCHAR(50)   DEFAULT NULL,
   `equipment_id`     VARCHAR(100)  NOT NULL,
   `equipment_name`   VARCHAR(150)  NOT NULL,
   `maintenance_date` VARCHAR(10)   NOT NULL,
