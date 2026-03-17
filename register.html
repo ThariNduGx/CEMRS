@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="register.pageTitle">Owner Registration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* Preload prevention of flash of unstyled text */
+    body { background-color: #0f1115; }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="register">
+  <main class="auth-shell">
+    <section class="auth-card auth-card--wide">
+      <p class="eyebrow" data-i18n="register.onboarding">Owner Onboarding</p>
+      <h1 data-i18n="register.title">Create Machinery Owner Account</h1>
+      <p class="muted auth-intro" data-i18n="register.intro">Register as a machinery owner to manage submissions, renewals, and account details.</p>
+
+      <form id="owner-register-form" class="grid-form">
+        <label>
+          <span data-i18n="register.fullName">Full Name</span>
+          <input type="text" name="name" required data-i18n-placeholder="register.fullNamePlaceholder" placeholder="Enter your full name">
+        </label>
+        <label>
+          <span data-i18n="register.companyName">Business / Company Name</span>
+          <input type="text" name="companyName" required data-i18n-placeholder="register.companyNamePlaceholder" placeholder="Registered company name">
+        </label>
+        <label>
+          <span data-i18n="register.email">Email</span>
+          <input type="email" name="email" required data-i18n-placeholder="register.emailPlaceholder" placeholder="owner@example.com">
+        </label>
+        <label>
+          <span data-i18n="register.contactNumber">Contact Number</span>
+          <input type="tel" name="contactDetails" required data-i18n-placeholder="register.contactPlaceholder" placeholder="0771234567">
+        </label>
+        <label>
+          <span data-i18n="register.password">Password</span>
+          <input type="password" name="password" minlength="8" required data-i18n-placeholder="register.passwordPlaceholder" placeholder="Minimum 8 characters">
+        </label>
+        <label>
+          <span data-i18n="register.confirmPassword">Confirm Password</span>
+          <input type="password" name="confirmPassword" minlength="8" required data-i18n-placeholder="register.confirmPasswordPlaceholder" placeholder="Re-enter your password">
+        </label>
+        <label class="grid-span-2">
+          <span data-i18n="register.address">Address</span>
+          <textarea name="address" rows="3" required data-i18n-placeholder="register.addressPlaceholder" placeholder="Business or mailing address"></textarea>
+        </label>
+        <label class="grid-span-2 checkbox-row">
+          <input type="checkbox" name="agreement" required>
+          <span data-i18n="register.agreement">I confirm that the information provided is accurate and can be used for CIDA machinery registration records.</span>
+        </label>
+        <button class="button button--primary grid-span-2" type="submit" data-i18n="register.submit">Register Account</button>
+      </form>
+
+      <div id="register-feedback" class="feedback" aria-live="polite"></div>
+
+      <p class="inline-links">
+        <a href="login.html" data-i18n="common.alreadyHaveAccount">Already have an account?</a>
+        <a href="index.html" data-i18n="common.returnToPublicRegister">Return to public register</a>
+        <a href="help.html">Help &amp; Documentation</a>
+      </p>
+    </section>
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="login.contractorPageTitle">Contractor Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* Preload prevention of flash of unstyled text */
+    body { background-color: #0f1115; }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="contractor-login">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <p class="eyebrow" data-i18n="login.contractorAccess">Contractor Access</p>
+      <h1 data-i18n="login.contractorTitle">Login</h1>
+      <p class="muted" data-i18n="login.contractorIntro">Login to search equipment and request rentals.</p>
+
+      <form id="contractor-login-form" class="stack">
+        <label>
+          <span data-i18n="login.email">Email</span>
+          <input type="email" id="login-email" required data-i18n-placeholder="login.emailPlaceholder" placeholder="contractor@example.com">
+        </label>
+        <label>
+          <span data-i18n="login.password">Password</span>
+          <input type="password" id="login-password" required data-i18n-placeholder="login.passwordPlaceholder" placeholder="Enter password">
+        </label>
+        <button class="button button--primary" type="submit" data-i18n="common.login">Login</button>
+      </form>
+
+      <div id="login-feedback" class="feedback" aria-live="polite"></div>
+
+      <p class="inline-links">
+        <a href="index.html" data-i18n="common.backToPublicRegister">Back to public register</a>
+        <a href="contractor-register.html" data-i18n="common.createContractorAccount">Create contractor account</a>
+      </p>
+    </section>
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const form = document.getElementById("contractor-login-form");
+        const feedback = document.getElementById("login-feedback");
+
+        // Clear existing local sessions on load of login page just in case
+        sessionStorage.removeItem("cida_session");
+
+        form.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            CIDA_UTILS.setFeedback(feedback, "Logging in...", "info");
+
+            const data = {
+                email: document.getElementById('login-email').value,
+                password: document.getElementById('login-password').value
+            };
+
+            try {
+                const response = await fetch('api/login_contractor.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if(result.success) {
+                    CIDA_UTILS.setFeedback(feedback, result.message, "success");
+                    // Save to local session to match app's existing flow
+                    sessionStorage.setItem("cida_session", JSON.stringify({
+                        userId: result.user.id,
+                        role: result.user.role,
+                        email: result.user.email,
+                        name: result.user.full_name,
+                        company_name: result.user.company_name
+                    }));
+                    window.location.href = 'contractor-dashboard.html';
+                } else {
+                    CIDA_UTILS.setFeedback(feedback, result.message, "error");
+                }
+            } catch(error) {
+                console.error("Login error:", error);
+                CIDA_UTILS.setFeedback(feedback, "An unexpected error occurred. Please try again later.", "error");
+            }
+        });
+    });
+  </script>
+</body>
+</html>

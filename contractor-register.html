@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="register.contractorPageTitle">Contractor Registration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* Preload prevention of flash of unstyled text */
+    body { background-color: #0f1115; }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="contractor-register">
+  <main class="auth-shell">
+    <section class="auth-card auth-card--wide">
+      <p class="eyebrow" data-i18n="register.contractorOnboarding">Contractor Onboarding</p>
+      <h1 data-i18n="register.contractorTitle">Create Contractor Account</h1>
+      <p class="muted auth-intro" data-i18n="register.contractorIntro">Register as a contractor to search for available machinery and request rentals.</p>
+
+      <form id="contractor-register-form" class="grid-form">
+        <label>
+          <span data-i18n="register.fullName">Full Name</span>
+          <input type="text" id="reg-name" required data-i18n-placeholder="register.fullNamePlaceholder" placeholder="Enter your full name">
+        </label>
+        <label>
+          <span data-i18n="register.companyName">Business / Company Name</span>
+          <input type="text" id="reg-company" required data-i18n-placeholder="register.companyNamePlaceholder" placeholder="Registered company name">
+        </label>
+        <label>
+          <span data-i18n="register.cidaNumber">CIDA Registration Number</span>
+          <input type="text" id="reg-cida" required data-i18n-placeholder="register.cidaPlaceholder" placeholder="e.g. CIDA/C/1234">
+        </label>
+        <label>
+          <span data-i18n="register.email">Email</span>
+          <input type="email" id="reg-email" required data-i18n-placeholder="register.emailPlaceholder" placeholder="contractor@example.com">
+        </label>
+        <label>
+          <span data-i18n="register.contactNumber">Contact Number</span>
+          <input type="tel" id="reg-contact" required data-i18n-placeholder="register.contactPlaceholder" placeholder="0771234567">
+        </label>
+        <label>
+          <span data-i18n="register.password">Password</span>
+          <input type="password" id="reg-password" minlength="8" required data-i18n-placeholder="register.passwordPlaceholder" placeholder="Minimum 8 characters">
+        </label>
+        <label class="grid-span-2 checkbox-row">
+          <input type="checkbox" name="agreement" required>
+          <span data-i18n="register.agreementContractor">I confirm that I am an authorized representative of the registered company.</span>
+        </label>
+        <button class="button button--primary grid-span-2" type="submit" data-i18n="register.submitContractor">Register Account</button>
+      </form>
+
+      <div id="register-feedback" class="feedback" aria-live="polite"></div>
+
+      <p class="inline-links">
+        <a href="contractor-login.html" data-i18n="common.alreadyHaveAccount">Already have an account?</a>
+        <a href="index.html" data-i18n="common.returnToPublicRegister">Return to public register</a>
+      </p>
+    </section>
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const form = document.getElementById("contractor-register-form");
+        const feedback = document.getElementById("register-feedback");
+
+        form.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            CIDA_UTILS.setFeedback(feedback, "Registering...", "info");
+
+            const data = {
+                full_name: document.getElementById('reg-name').value,
+                company_name: document.getElementById('reg-company').value,
+                cida_number: document.getElementById('reg-cida').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value,
+                contact_details: document.getElementById('reg-contact').value
+            };
+
+            try {
+                const response = await fetch('api/register_contractor.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if(result.success) {
+                    CIDA_UTILS.setFeedback(feedback, result.message, "success");
+                    form.reset();
+                    setTimeout(() => window.location.href = 'contractor-login.html', 3000);
+                } else {
+                    CIDA_UTILS.setFeedback(feedback, result.message, "error");
+                }
+            } catch(error) {
+                console.error("Registration error:", error);
+                CIDA_UTILS.setFeedback(feedback, "An unexpected error occurred. Please try again later.", "error");
+            }
+        });
+    });
+  </script>
+</body>
+</html>

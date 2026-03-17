@@ -1,0 +1,205 @@
+(function () {
+  function getText(key, fallback, replacements) {
+    return CIDA_UTILS.getText(key, fallback, replacements);
+  }
+
+  function getSession() {
+    try {
+      return JSON.parse(sessionStorage.getItem("cida_session")) || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function setSession(session) {
+    sessionStorage.setItem("cida_session", JSON.stringify(session));
+  }
+
+  function clearSession() {
+    sessionStorage.removeItem("cida_session");
+  }
+
+  function getCurrentUser() {
+    var session = getSession();
+    if (!session) {
+      return null;
+    }
+
+    return CIDA_DB.findById("users", session.userId);
+  }
+
+  function redirectForRole(role) {
+    var routeMap = {
+      admin: "admin-dashboard.html",
+      director_general: "director-general-dashboard.html",
+      owner: "owner-dashboard.html",
+    };
+
+    window.location.href = routeMap[role] || "login.html";
+  }
+
+  function requireRole(role) {
+    var session = getSession();
+    if (!session || session.role !== role) {
+      window.location.href = "login.html";
+      return null;
+    }
+
+    return CIDA_DB.findById("users", session.userId);
+  }
+
+  function wireLogout() {
+    var button = document.getElementById("logout-button");
+    if (!button) {
+      return;
+    }
+
+    button.addEventListener("click", function () {
+      clearSession();
+      window.location.href = "login.html";
+    });
+  }
+
+  function handleLoginPage() {
+    var form = document.getElementById("login-form");
+    var feedback = document.getElementById("login-feedback");
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var formData = new FormData(form);
+      var email = String(formData.get("email") || "").trim().toLowerCase();
+      var password = String(formData.get("password") || "");
+      var user = CIDA_DB.getData("users").find(function (item) {
+        return item.email.toLowerCase() === email && item.password === password;
+      });
+
+      if (!user) {
+        CIDA_UTILS.setFeedback(feedback, getText("feedback.invalidLogin", "Invalid email or password."), "error");
+        return;
+      }
+
+      setSession({ userId: user.id, role: user.role });
+      CIDA_UTILS.setFeedback(feedback, getText("feedback.loginSuccess", "Login successful. Redirecting..."), "success");
+      redirectForRole(user.role);
+    });
+  }
+
+  function handleRegisterPage() {
+    var form = document.getElementById("owner-register-form");
+    var feedback = document.getElementById("register-feedback");
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var formData = new FormData(form);
+      var name = String(formData.get("name") || "").trim();
+      var companyName = String(formData.get("companyName") || "").trim();
+      var email = String(formData.get("email") || "").trim().toLowerCase();
+      var password = String(formData.get("password") || "");
+      var confirmPassword = String(formData.get("confirmPassword") || "");
+      var contactDetails = String(formData.get("contactDetails") || "").trim();
+      var address = String(formData.get("address") || "").trim();
+      var users = CIDA_DB.getData("users");
+      var exists = users.some(function (user) {
+        return user.email.toLowerCase() === email;
+      });
+
+      if (!name || !companyName || !contactDetails || !address) {
+        CIDA_UTILS.setFeedback(feedback, getText("feedback.completeRegistration", "Complete all required registration fields."), "error");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        CIDA_UTILS.setFeedback(feedback, getText("feedback.passwordMismatch", "Password confirmation does not match."), "error");
+        return;
+      }
+
+      if (password.length < 8) {
+        CIDA_UTILS.setFeedback(feedback, getText("feedback.passwordTooShort", "Password must be at least 8 characters long."), "error");
+        return;
+      }
+
+      if (exists) {
+        CIDA_UTILS.setFeedback(feedback, getText("feedback.emailExists", "An account already exists for that email."), "error");
+        return;
+      }
+
+      var newUser = CIDA_DB.insert("users", {
+        name: name,
+        companyName: companyName,
+        email: email,
+        password: password,
+        role: "owner",
+        contactDetails: contactDetails,
+        address: address,
+      });
+
+      form.reset();
+      setSession({ userId: newUser.id, role: newUser.role });
+      CIDA_UTILS.setFeedback(feedback, getText("feedback.accountCreated", "Account created. Redirecting to owner dashboard..."), "success");
+      redirectForRole("owner");
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    var page = document.body.dataset.page;
+    var session = getSession();
+
+    if ((page === "login" || page === "register") && session) {
+      redirectForRole(session.role);
+      return;
+    }
+
+    if (page === "owner-dashboard") {
+      var owner = requireRole("owner");
+      if (!owner) {
+        return;
+      }
+
+      var ownerSummary = document.getElementById("owner-user-summary");
+      if (ownerSummary) {
+        ownerSummary.textContent = owner.name;
+      }
+    }
+
+    if (page === "admin-dashboard") {
+      var admin = requireRole("admin");
+      if (!admin) {
+        return;
+      }
+
+      var adminSummary = document.getElementById("admin-user-summary");
+      if (adminSummary) {
+        adminSummary.textContent = admin.name;
+      }
+    }
+
+    if (page === "director-general-dashboard") {
+      var directorGeneral = requireRole("director_general");
+      if (!directorGeneral) {
+        return;
+      }
+
+      var directorGeneralSummary = document.getElementById("director-general-user-summary");
+      if (directorGeneralSummary) {
+        directorGeneralSummary.textContent = directorGeneral.name;
+      }
+    }
+
+    wireLogout();
+    handleLoginPage();
+    handleRegisterPage();
+  });
+
+  window.CIDA_AUTH = {
+    getSession: getSession,
+    getCurrentUser: getCurrentUser,
+    clearSession: clearSession,
+    requireRole: requireRole,
+  };
+})();

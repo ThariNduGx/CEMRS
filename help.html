@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help &amp; Documentation - CIDA Machinery Registration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    body { background-color: #f4f6f9; }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="help">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Documentation</p>
+      <h1>Help &amp; System Guide</h1>
+    </div>
+    <div class="topbar__actions">
+      <a class="button button--ghost" href="index.html">Public Register</a>
+      <a class="button button--ghost" href="register.html">Register</a>
+      <a class="button button--primary" href="login.html">Login</a>
+    </div>
+  </header>
+
+  <main class="page-shell workspace-shell help-shell">
+    <nav class="help-toc panel">
+      <p class="eyebrow">Contents</p>
+      <a href="#section-overview">1. System Overview</a>
+      <a href="#section-stack">2. Technical Stack</a>
+      <a href="#section-data-layer">3. Data Layer</a>
+      <a href="#section-communication">4. Component Communication</a>
+      <a href="#section-user-flows">5. User Flows</a>
+      <a href="#section-status-lifecycle">6. Status Lifecycle</a>
+      <a href="#section-data-models">7. Data Models</a>
+      <a href="#section-security">8. Security Notes</a>
+    </nav>
+
+    <div class="workspace-main">
+      <!-- 1. System Overview -->
+      <section id="section-overview" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-overview">
+          1. System Overview
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-overview" class="help-content">
+          <p>
+            The <strong>CIDA Machinery Registration System</strong> is a browser-based application built for
+            Sri Lanka's Construction Industry Development Authority. It manages the registration, certification,
+            renewal, and maintenance tracking of construction machinery used across the country.
+          </p>
+          <h3>Purpose</h3>
+          <ul>
+            <li>Provide a centralised digital register of approved construction machinery.</li>
+            <li>Allow machinery owners to submit registration applications with supporting documents.</li>
+            <li>Enable the Director General to review, certify, reject, or revoke registrations.</li>
+            <li>Let the maintenance admin track equipment servicing, repairs, and schedules.</li>
+          </ul>
+          <h3>User Roles</h3>
+          <ol>
+            <li><strong>Public User</strong> &mdash; View the approved register (no login required).</li>
+            <li><strong>Owner</strong> &mdash; Register machinery, pay fees, view status, renew, and appeal.</li>
+            <li><strong>Maintenance Admin</strong> &mdash; Create and manage maintenance records, view alerts and reports.</li>
+            <li><strong>Director General</strong> &mdash; Certify or reject applications, manage the approved register, review appeals, export reports.</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 2. Technical Stack -->
+      <section id="section-stack" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-stack">
+          2. Technical Stack
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-stack" class="help-content">
+          <ul>
+            <li><strong>HTML5</strong> &mdash; Semantic markup with <code>data-page</code> routing attributes.</li>
+            <li><strong>Vanilla JavaScript (IIFE / ES5)</strong> &mdash; No frameworks; all logic wrapped in IIFEs and exposed via global objects.</li>
+            <li><strong>CSS3</strong> &mdash; Custom properties (variables), grid/flexbox layout, responsive media queries.</li>
+            <li><strong>localStorage</strong> &mdash; Persistent data store for users, machinery, and maintenance tables.</li>
+            <li><strong>sessionStorage</strong> &mdash; Session management (current user token).</li>
+            <li><strong>Browser APIs</strong> &mdash; <code>Blob</code> (CSV/PDF export), <code>FormData</code> (form handling), <code>window.open</code> (print certificates).</li>
+          </ul>
+
+          <h3>Architecture Diagram</h3>
+          <div class="help-diagram">
+            <div class="help-diagram__box help-diagram__box--blue">Browser</div>
+            <span class="help-diagram__arrow">&rarr;</span>
+            <div class="help-diagram__box help-diagram__box--green">HTML + CSS</div>
+            <span class="help-diagram__arrow">&rarr;</span>
+            <div class="help-diagram__box help-diagram__box--orange">JS Modules<br><small>db.js, auth.js, owner.js, admin.js, director-general.js, public.js</small></div>
+            <span class="help-diagram__arrow">&rarr;</span>
+            <div class="help-diagram__box help-diagram__box--purple">localStorage / sessionStorage</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Data Layer -->
+      <section id="section-data-layer" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-data-layer">
+          3. Data Layer
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-data-layer" class="help-content">
+          <p>
+            All data is stored in <code>localStorage</code> as JSON arrays. The <code>CIDA_DB</code> global object
+            provides a simple CRUD API that every page module uses.
+          </p>
+
+          <div class="help-code">
+            <span class="help-code__title">CIDA_DB API (db.js)</span>
+<pre>CIDA_DB.getData(table)          // Returns an array of records
+CIDA_DB.saveData(table, data)   // Overwrites the table with data
+CIDA_DB.insert(table, record)   // Appends a record with generated ID
+CIDA_DB.update(table, id, fields) // Merges fields into matching record
+CIDA_DB.findById(table, id)     // Returns a single record or null</pre>
+          </div>
+
+          <h3>ID Generation</h3>
+          <p>
+            IDs follow the pattern <code>{table_prefix}_{timestamp}_{random}</code>, e.g.
+            <code>m_1717012345678_4821</code> for a machinery record. The prefix is the first character of the table name.
+          </p>
+
+          <h3>Tables</h3>
+          <ul>
+            <li><strong>users</strong> &mdash; All user accounts (owners, admin, director general).</li>
+            <li><strong>machinery</strong> &mdash; Registration records submitted by owners.</li>
+            <li><strong>maintenance</strong> &mdash; Equipment maintenance entries managed by the admin.</li>
+          </ul>
+
+          <h3>Migration &amp; Seeding</h3>
+          <p>
+            <code>migration.js</code> runs on every page load. It checks whether seed data exists and, if not,
+            inserts default user accounts (admin, director general, owner) and sample machinery records
+            so the system works immediately on first visit.
+          </p>
+        </div>
+      </section>
+
+      <!-- 4. Component Communication -->
+      <section id="section-communication" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-communication">
+          4. Component Communication
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-communication" class="help-content">
+          <h3>Global Objects</h3>
+          <ul>
+            <li><code>CIDA_DB</code> &mdash; Data access layer (CRUD operations on localStorage).</li>
+            <li><code>CIDA_AUTH</code> &mdash; Authentication helpers (getSession, setSession, clearSession, requireRole, redirectForRole).</li>
+            <li><code>CIDA_UTILS</code> &mdash; Shared utilities (escapeHtml, formatDate, addYears, setFeedback, getText, status helpers).</li>
+            <li><code>CIDA_CONSTANTS</code> &mdash; Static reference data (machineryTypes, documentTypes).</li>
+          </ul>
+
+          <h3>Script Loading Order</h3>
+          <p>
+            Every page loads scripts in dependency order:
+            <code>db.js</code> &rarr; <code>migration.js</code> &rarr; <code>auth.js</code> (if authenticated) &rarr; page-specific module.
+            This ensures globals are available before any page logic runs.
+          </p>
+
+          <h3>Page Routing</h3>
+          <p>
+            Each HTML page declares <code>data-page</code> on the <code>&lt;body&gt;</code> tag (e.g.
+            <code>data-page="owner-dashboard"</code>). After login, <code>CIDA_AUTH.redirectForRole()</code>
+            sends the user to the correct dashboard based on their role.
+          </p>
+
+          <h3>Event-Driven Re-Rendering</h3>
+          <p>
+            Page modules call render functions after data mutations (insert, update). For example, after a machinery
+            submission the owner page re-reads the table and rebuilds the status board <code>&lt;tbody&gt;</code>.
+          </p>
+
+          <h3>Modal Pattern</h3>
+          <p>
+            Modals use a <code>&lt;div class="modal" hidden&gt;</code> wrapper with a backdrop and panel.
+            Opening removes the <code>hidden</code> attribute and adds <code>body.modal-open</code>; closing
+            restores both.
+          </p>
+        </div>
+      </section>
+
+      <!-- 5. User Flows -->
+      <section id="section-user-flows" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-user-flows">
+          5. User Flows
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-user-flows" class="help-content">
+
+          <h3>5.1 Public User</h3>
+          <ul>
+            <li>Visit <code>index.html</code> &mdash; no login required.</li>
+            <li>View the <strong>Approved Register</strong> table showing all certified machinery.</li>
+            <li>Use the filter form to search by owner name, machinery type, location, or registration number.</li>
+            <li>Navigate to <strong>Register</strong> to create an owner account, or <strong>Login</strong> to access a dashboard.</li>
+          </ul>
+
+          <h3>5.2 Owner</h3>
+          <ul>
+            <li><strong>Register Machinery</strong> &mdash; Fill out the registration form with machinery type, make/model,
+              country of origin, and location. Attach 4 required documents: Revenue License, Motor Traffic Certificate,
+              Affidavit, and Engineer Report.</li>
+            <li><strong>Fee Tiers</strong> &mdash; The registration fee depends on the number of previously registered machines:
+              <ul>
+                <li>1st machine: Rs. 1,000</li>
+                <li>2nd machine: Rs. 750</li>
+                <li>3rd machine: Rs. 500</li>
+                <li>4th machine: Rs. 300</li>
+                <li>5th+ machines: Rs. 100</li>
+              </ul>
+            </li>
+            <li><strong>Status Board</strong> &mdash; View all submitted machinery with current status (Pending, Approved, Rejected, Revoked, Pending Renewal).</li>
+            <li><strong>Renewal</strong> &mdash; When a certificate is within 30 days of expiry, a &ldquo;Renew&rdquo; button appears. Renewal resets the status to <code>pending_renewal</code> for DG review.</li>
+            <li><strong>View / Print Certificate</strong> &mdash; For approved machinery, click &ldquo;View Certificate&rdquo; to see the digital certificate card and print or save as PDF.</li>
+            <li><strong>Submit Appeal</strong> &mdash; If a registration is rejected, the owner can submit an appeal with a written explanation for the Director General to review.</li>
+          </ul>
+
+          <h3>5.3 Maintenance Admin</h3>
+          <ul>
+            <li><strong>Dashboard</strong> &mdash; View total records, completed count, and scheduled/overdue count. See service vs. repair breakdown and location coverage.</li>
+            <li><strong>Create Record</strong> &mdash; Fill out the maintenance form with equipment ID, name, date, status, type (service/repair), location, site, and attach documents.</li>
+            <li><strong>History Table</strong> &mdash; Browse all maintenance records with status badges and document links.</li>
+            <li><strong>Alerts &amp; Notifications</strong> &mdash; Bell icon shows upcoming scheduled maintenance and overdue items within the configured notification window.</li>
+            <li><strong>Settings</strong> &mdash; Configure the notification window (days) and default status for new records.</li>
+          </ul>
+
+          <h3>5.4 Director General</h3>
+          <ul>
+            <li><strong>Review Queue</strong> &mdash; Table of pending and pending-renewal applications. Each row has &ldquo;Certify&rdquo; and &ldquo;Reject&rdquo; buttons.</li>
+            <li><strong>Certify</strong> &mdash; Approving generates a registration number in the format <code>CIDA-{TYPE_CODE}-{YEAR}-{SEQ}</code>, e.g. <code>CIDA-WL-2026-001</code>. Sets expiry to 1 year from approval date.</li>
+            <li><strong>Reject</strong> &mdash; Prompts for a rejection reason that the owner can see. Status changes to <code>rejected</code>.</li>
+            <li><strong>Approved Register</strong> &mdash; Searchable table of all certified machinery. The DG can <strong>revoke</strong> any active certificate.</li>
+            <li><strong>Appeals Review</strong> &mdash; Table of submitted appeals. The DG can <strong>accept</strong> (returns machinery to <code>pending</code> for re-review) or <strong>dismiss</strong> the appeal.</li>
+            <li><strong>Export</strong> &mdash; Generate <strong>CSV</strong> or <strong>PDF</strong> reports of the full registration summary including category breakdown.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 6. Status Lifecycle -->
+      <section id="section-status-lifecycle" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-status-lifecycle">
+          6. Status Lifecycle
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-status-lifecycle" class="help-content">
+          <p>The following diagram shows how a machinery record transitions between statuses:</p>
+
+          <h3>Approval Path</h3>
+          <div class="help-flow">
+            <span class="help-flow__node help-flow__node--pending">pending</span>
+            <span class="help-flow__arrow">&rarr;</span>
+            <span class="help-flow__node help-flow__node--approved">approved</span>
+            <span class="help-flow__arrow">&rarr;</span>
+            <span class="help-flow__node help-flow__node--renewal">pending_renewal</span>
+            <span class="help-flow__arrow">&rarr;</span>
+            <span class="help-flow__node help-flow__node--approved">approved (renewed)</span>
+          </div>
+
+          <h3>Rejection &amp; Appeal Path</h3>
+          <div class="help-flow">
+            <span class="help-flow__node help-flow__node--pending">pending</span>
+            <span class="help-flow__arrow">&rarr;</span>
+            <span class="help-flow__node help-flow__node--rejected">rejected</span>
+            <span class="help-flow__arrow">&rarr;</span>
+            <span class="help-flow__node help-flow__node--appeal">appeal submitted</span>
+            <span class="help-flow__arrow">&rarr;</span>
+            <span class="help-flow__node help-flow__node--pending">accepted (back to pending)</span>
+          </div>
+          <div class="help-flow" style="margin-top: 0.5rem;">
+            <span class="help-flow__node help-flow__node--appeal">appeal submitted</span>
+            <span class="help-flow__arrow">&rarr;</span>
+            <span class="help-flow__node help-flow__node--rejected">dismissed (stays rejected)</span>
+          </div>
+
+          <h3>Revocation</h3>
+          <div class="help-flow">
+            <span class="help-flow__node help-flow__node--approved">approved</span>
+            <span class="help-flow__arrow">&rarr;</span>
+            <span class="help-flow__node help-flow__node--revoked">revoked</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. Data Models -->
+      <section id="section-data-models" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-data-models">
+          7. Data Models
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-data-models" class="help-content">
+
+          <h3>Users Table</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Field</th><th>Type</th><th>Example</th><th>Notes</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>id</td><td>string</td><td>u_1717012345678_1234</td><td>Auto-generated</td></tr>
+                <tr><td>name</td><td>string</td><td>John Silva</td><td>Full name</td></tr>
+                <tr><td>email</td><td>string</td><td>owner@test.com</td><td>Unique, used for login</td></tr>
+                <tr><td>password</td><td>string</td><td>Owner@123</td><td>Plaintext (prototype only)</td></tr>
+                <tr><td>role</td><td>string</td><td>owner</td><td>owner | admin | director_general</td></tr>
+                <tr><td>companyName</td><td>string</td><td>Silva Construction</td><td>Owner accounts only</td></tr>
+                <tr><td>contactDetails</td><td>string</td><td>0771234567</td><td>Phone number</td></tr>
+                <tr><td>address</td><td>string</td><td>123 Main St, Colombo</td><td>Business address</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Machinery Table</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Field</th><th>Type</th><th>Example</th><th>Notes</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>id</td><td>string</td><td>m_1717012345678_5678</td><td>Auto-generated</td></tr>
+                <tr><td>ownerId</td><td>string</td><td>u_1717012345678_1234</td><td>FK to users table</td></tr>
+                <tr><td>type</td><td>string</td><td>WL</td><td>Machinery type code</td></tr>
+                <tr><td>makeModel</td><td>string</td><td>CAT 950GC</td><td>Manufacturer and model</td></tr>
+                <tr><td>countryOfOrigin</td><td>string</td><td>Japan</td><td>Country of manufacture</td></tr>
+                <tr><td>location</td><td>string</td><td>Colombo</td><td>Current location</td></tr>
+                <tr><td>status</td><td>string</td><td>approved</td><td>pending | approved | rejected | revoked | pending_renewal</td></tr>
+                <tr><td>registrationNumber</td><td>string</td><td>CIDA-WL-2026-001</td><td>Assigned on approval</td></tr>
+                <tr><td>registrationDate</td><td>number</td><td>1717012345678</td><td>Timestamp of approval</td></tr>
+                <tr><td>expiryDate</td><td>number</td><td>1748548345678</td><td>1 year from registration</td></tr>
+                <tr><td>submittedAt</td><td>number</td><td>1717012345678</td><td>Timestamp of submission</td></tr>
+                <tr><td>rejectionReason</td><td>string</td><td>Incomplete documents</td><td>Set on rejection</td></tr>
+                <tr><td>documents</td><td>object</td><td>{revenueLicense: "..."}</td><td>Simulated file references</td></tr>
+                <tr><td>feePaid</td><td>number</td><td>1000</td><td>Registration fee amount</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Maintenance Table</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Field</th><th>Type</th><th>Example</th><th>Notes</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>id</td><td>string</td><td>m_1717012345678_9012</td><td>Auto-generated</td></tr>
+                <tr><td>equipmentId</td><td>string</td><td>EQ-EX-001</td><td>Equipment identifier</td></tr>
+                <tr><td>equipmentName</td><td>string</td><td>Komatsu PC210</td><td>Display name</td></tr>
+                <tr><td>maintenanceDate</td><td>string</td><td>2026-03-15</td><td>ISO date string</td></tr>
+                <tr><td>status</td><td>string</td><td>scheduled</td><td>scheduled | in_progress | completed | overdue</td></tr>
+                <tr><td>maintenanceType</td><td>string</td><td>service</td><td>service | repair</td></tr>
+                <tr><td>location</td><td>string</td><td>Colombo</td><td>Maintenance location</td></tr>
+                <tr><td>site</td><td>string</td><td>Site A</td><td>Work site</td></tr>
+                <tr><td>documents</td><td>object</td><td>{revenueLicense: "..."}</td><td>Attached documents</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. Security Notes -->
+      <section id="section-security" class="panel">
+        <button class="help-toggle" type="button" aria-expanded="true" aria-controls="content-security">
+          8. Security Notes
+          <span class="help-chevron">&#9660;</span>
+        </button>
+        <div id="content-security" class="help-content">
+          <h3>Session Management</h3>
+          <p>
+            User sessions are stored in <code>sessionStorage</code> as a JSON object containing
+            <code>userId</code> and <code>role</code>. Sessions are cleared on tab close or explicit logout.
+          </p>
+
+          <h3>Role-Based Access Control (RBAC)</h3>
+          <p>
+            Protected pages call <code>CIDA_AUTH.requireRole(role)</code> on load. If the session is missing
+            or the role does not match, the user is redirected to <code>login.html</code>.
+          </p>
+
+          <h3>XSS Prevention</h3>
+          <p>
+            All user-supplied text rendered into the DOM passes through <code>CIDA_UTILS.escapeHtml()</code>,
+            which replaces <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>"</code>, and
+            <code>'</code> with their HTML entity equivalents.
+          </p>
+
+          <h3>Prototype Limitations</h3>
+          <p>This is a student prototype and has the following known limitations:</p>
+          <ul>
+            <li><strong>Plaintext Passwords</strong> &mdash; Passwords are stored as-is in localStorage. A production system would use server-side hashing (bcrypt, argon2).</li>
+            <li><strong>No Server</strong> &mdash; All logic runs in the browser. There is no backend API, database server, or network requests.</li>
+            <li><strong>Simulated File Uploads</strong> &mdash; Document file inputs capture the file name but do not actually upload or store file contents.</li>
+            <li><strong>No HTTPS / CORS</strong> &mdash; Since everything runs locally, there are no transport security considerations.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script>
+  (function () {
+    // Collapsible section toggles
+    var toggles = document.querySelectorAll('.help-toggle');
+    for (var i = 0; i < toggles.length; i++) {
+      toggles[i].addEventListener('click', function () {
+        var expanded = this.getAttribute('aria-expanded') === 'true';
+        var contentId = this.getAttribute('aria-controls');
+        var content = document.getElementById(contentId);
+        if (!content) return;
+        this.setAttribute('aria-expanded', String(!expanded));
+        content.hidden = expanded;
+      });
+    }
+
+    // Active TOC link highlighting on scroll
+    var tocLinks = document.querySelectorAll('.help-toc a');
+    var sections = [];
+    for (var j = 0; j < tocLinks.length; j++) {
+      var href = tocLinks[j].getAttribute('href');
+      var target = document.querySelector(href);
+      if (target) sections.push({ link: tocLinks[j], el: target });
+    }
+
+    function updateActiveToc() {
+      var scrollY = window.scrollY || window.pageYOffset;
+      var active = null;
+      for (var k = 0; k < sections.length; k++) {
+        if (sections[k].el.offsetTop - 100 <= scrollY) {
+          active = sections[k];
+        }
+      }
+      for (var m = 0; m < sections.length; m++) {
+        sections[m].link.classList.toggle('active', sections[m] === active);
+      }
+    }
+
+    window.addEventListener('scroll', updateActiveToc);
+    updateActiveToc();
+  })();
+  </script>
+</body>
+</html>

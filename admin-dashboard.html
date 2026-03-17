@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintenance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    body { background-color: #f4f6f9; }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="admin-dashboard">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Maintenance Section</p>
+      <h1>Maintenance Management</h1>
+    </div>
+    <div class="topbar__actions">
+      <div class="dropdown-wrapper">
+        <button id="notification-button" class="button button--ghost icon-button" type="button" aria-label="Notifications">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span id="notification-badge" class="badge-dot" hidden></span>
+        </button>
+        <div id="notification-dropdown" class="dropdown-menu" hidden>
+          <div class="dropdown-header">
+            <h3>Alerts & Notifications</h3>
+          </div>
+          <ul id="maintenance-alerts-list" class="alerts-list dropdown-list"></ul>
+        </div>
+      </div>
+      <a class="button button--ghost" href="help.html">Help</a>
+      <span id="admin-user-summary" class="pill"></span>
+      <button id="logout-button" class="button button--ghost" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="page-shell workspace-shell">
+    <nav class="panel workspace-nav">
+      <p class="eyebrow">Maintenance Menu</p>
+      <a href="#maintenance-dashboard">Dashboard</a>
+      <a href="#maintenance-form-section">Maintenance Record Form</a>
+      <a href="#maintenance-history-section">Maintenance History</a>
+      <a href="#contractors-management-section">Contractor Management</a>
+      <a href="#maintenance-reports-section">Reports</a>
+      <a href="#maintenance-settings-section">Settings</a>
+    </nav>
+
+    <div class="workspace-main">
+      <section id="maintenance-dashboard" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Dashboard</p>
+            <h2>Maintenance Overview</h2>
+          </div>
+        </div>
+
+        <div class="stats-grid stats-grid--three">
+          <article class="stat-card">
+            <span>Total Records</span>
+            <strong id="maintenance-total-records">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Completed</span>
+            <strong id="maintenance-completed-records">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Scheduled / Overdue</span>
+            <strong id="maintenance-active-records">0</strong>
+          </article>
+        </div>
+
+        <div class="dashboard-overview-grid">
+          <article class="dashboard-note">
+            <h3>Service vs Repair</h3>
+            <p id="maintenance-type-summary" class="muted"></p>
+          </article>
+          <article class="dashboard-note">
+            <h3>Location Coverage</h3>
+            <ul id="maintenance-location-summary" class="report-list"></ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="maintenance-form-section" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Maintenance Record Form</p>
+            <h2>Create Maintenance Record</h2>
+          </div>
+        </div>
+
+        <form id="maintenance-form" class="grid-form">
+          <label>
+            <span>Equipment ID</span>
+            <input type="text" name="equipmentId" required placeholder="EQ-EX-001">
+          </label>
+          <label>
+            <span>Equipment Name</span>
+            <input type="text" name="equipmentName" required placeholder="Komatsu PC210">
+          </label>
+          <label>
+            <span>Maintenance Date</span>
+            <input type="date" name="maintenanceDate" required>
+          </label>
+          <label>
+            <span>Status</span>
+            <select name="status" required>
+              <option value="scheduled">Scheduled</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </label>
+          <label>
+            <span>Maintenance Type</span>
+            <select name="maintenanceType" required>
+              <option value="service">Service</option>
+              <option value="repair">Repair</option>
+            </select>
+          </label>
+          <label>
+            <span>Location</span>
+            <input type="text" name="location" required placeholder="Colombo">
+          </label>
+          <label>
+            <span>Site</span>
+            <input type="text" name="site" required placeholder="Site A">
+          </label>
+          <label>
+            <span>Registration Certificate of Motor Traffic</span>
+            <input type="file" name="motorTrafficRegistrationCertificate" accept=".pdf,image/*" required>
+          </label>
+          <label>
+            <span>Revenue License</span>
+            <input type="file" name="revenueLicense" accept=".pdf,image/*" required>
+          </label>
+          <label class="grid-span-2">
+            <span>Revenue Report</span>
+            <input type="file" name="revenueReport" accept=".pdf,image/*" required>
+          </label>
+          <button class="button button--primary grid-span-2" type="submit">Save Maintenance Record</button>
+        </form>
+
+        <div id="maintenance-form-feedback" class="feedback" aria-live="polite"></div>
+      </section>
+
+      <section id="maintenance-history-section" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Maintenance History</p>
+            <h2>Recorded Maintenance Entries</h2>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Equipment ID</th>
+                <th>Equipment Name</th>
+                <th>Maintenance Date</th>
+                <th>Status</th>
+                <th>Type</th>
+                <th>Location / Site</th>
+                <th>Attachments</th>
+              </tr>
+            </thead>
+            <tbody id="maintenance-history-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="contractors-management-section" class="panel" style="display: none;">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Contractor Accounts</p>
+            <h2>Pending Approvals & Registrations</h2>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Company Name</th>
+                <th>CIDA Number</th>
+                <th>Contact Name</th>
+                <th>Email / Phone</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-contractors-body">
+              <tr><td colspan="6" class="muted" style="text-align: center;">Loading contractors...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="admin-contractor-feedback" class="feedback"></div>
+      </section>
+
+      <section id="maintenance-reports-section" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Reports</p>
+            <h2>Maintenance Reporting</h2>
+          </div>
+        </div>
+
+        <div class="stats-grid stats-grid--three">
+          <article class="stat-card">
+            <span>Scheduled</span>
+            <strong id="maintenance-report-scheduled">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>In Progress</span>
+            <strong id="maintenance-report-progress">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Overdue</span>
+            <strong id="maintenance-report-overdue">0</strong>
+          </article>
+        </div>
+
+        <div class="report-grid">
+          <div>
+            <h3>Records by Status</h3>
+            <ul id="maintenance-status-breakdown" class="report-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="maintenance-settings-section" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Settings</p>
+            <h2>Maintenance Preferences</h2>
+          </div>
+        </div>
+
+        <form id="maintenance-settings-form" class="grid-form">
+          <label>
+            <span>Notification Window (days)</span>
+            <input id="maintenance-notification-window" type="number" name="notificationWindow" min="1" max="30" value="7" required>
+          </label>
+          <label>
+            <span>Default Status</span>
+            <select id="maintenance-default-status" name="defaultStatus" required>
+              <option value="scheduled">Scheduled</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </label>
+          <button class="button button--primary grid-span-2" type="submit">Save Settings</button>
+        </form>
+
+        <div id="maintenance-settings-feedback" class="feedback" aria-live="polite"></div>
+      </section>
+    </div>
+
+
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

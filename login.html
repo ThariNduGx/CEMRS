@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="login.pageTitle">CIDA Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* Preload prevention of flash of unstyled text */
+    body { background-color: #0f1115; }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="login">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <p class="eyebrow" data-i18n="login.access">CIDA Access</p>
+      <h1 data-i18n="login.title">Login</h1>
+      <p class="muted" data-i18n="login.intro">Use the seeded accounts or an owner account you register here.</p>
+
+      <form id="login-form" class="stack">
+        <label>
+          <span data-i18n="login.email">Email</span>
+          <input type="email" name="email" required data-i18n-placeholder="login.emailPlaceholder" placeholder="admin@cida.gov.lk">
+        </label>
+        <label>
+          <span data-i18n="login.password">Password</span>
+          <input type="password" name="password" required data-i18n-placeholder="login.passwordPlaceholder" placeholder="Enter password">
+        </label>
+        <button class="button button--primary" type="submit" data-i18n="common.login">Login</button>
+      </form>
+
+      <div id="login-feedback" class="feedback" aria-live="polite"></div>
+
+      <div class="demo-box">
+        <h2 data-i18n="login.seededAccounts">Seeded Accounts</h2>
+        <p><strong data-i18n="login.adminLabel">Maintenance Admin:</strong> admin@cida.gov.lk / Admin@123</p>
+        <p><strong>Director General:</strong> dg@cida.gov.lk / Director@123</p>
+        <p><strong data-i18n="login.ownerLabel">Owner:</strong> owner@test.com / Owner@123</p>
+      </div>
+
+      <p class="inline-links">
+        <a href="index.html" data-i18n="common.backToPublicRegister">Back to public register</a>
+        <a href="register.html" data-i18n="common.createOwnerAccount">Create owner account</a>
+        <a href="help.html">Help &amp; Documentation</a>
+      </p>
+    </section>
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

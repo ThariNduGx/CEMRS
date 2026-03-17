@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="public.pageTitle">CIDA Machinery Register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* Preload prevention of flash of unstyled text */
+    body { background-color: #0f1115; }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="public">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow" data-i18n="public.access">Public Access</p>
+      <h1 data-i18n="public.title">CIDA Machinery Register</h1>
+    </div>
+    <div class="topbar__actions">
+      <a class="button button--ghost" href="help.html">Help</a>
+      <a class="button button--ghost" href="register.html" data-i18n="common.createOwnerAccount">Register Owner</a>
+      <a class="button button--primary" href="login.html" data-i18n="common.login">Owner Login</a>
+      <a class="button button--ghost" href="contractor-register.html">Register Contractor</a>
+      <a class="button button--primary" href="contractor-login.html">Contractor Login</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero__content panel">
+      <h2 style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 0.5rem; background: linear-gradient(to right, #fff, #a0a5aa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;" data-i18n="public.heroTitle">Search the Approved Register</h2>
+      <p class="hero__text" data-i18n="public.heroText">
+        Find verified construction equipment and machinery maintained under the central CIDA registration process.
+      </p>
+    </div>
+  </section>
+
+  <main class="page-shell">
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow" data-i18n="public.thirdSchedule">Third Schedule View</p>
+          <h2 data-i18n="public.approvedRegister">Approved Register</h2>
+        </div>
+        <p id="public-result-count" class="muted"></p>
+      </div>
+
+      <form id="public-filters" class="filter-grid">
+        <label>
+          <span data-i18n="public.ownerAddress">Owner / Address</span>
+          <input type="text" name="owner" data-i18n-placeholder="public.ownerPlaceholder" placeholder="Search owner or address">
+        </label>
+        <label>
+          <span data-i18n="public.machineryType">Machinery Type</span>
+          <input type="text" name="type" data-i18n-placeholder="public.typePlaceholder" placeholder="Wheel Loader, Excavator...">
+        </label>
+        <label>
+          <span data-i18n="common.location">Location</span>
+          <input type="text" name="location" data-i18n-placeholder="public.locationPlaceholder" placeholder="Colombo, Kandy...">
+        </label>
+        <label>
+          <span data-i18n="common.registrationNumber">Registration Number</span>
+          <input type="text" name="registrationNumber" data-i18n-placeholder="public.registrationPlaceholder" placeholder="CIDA-WL-2026-001">
+        </label>
+      </form>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="public.ownerAddress">Name / Address of Owner</th>
+              <th data-i18n="public.typeOfMachinery">Type of Machinery</th>
+              <th data-i18n="common.model">Make / Model</th>
+              <th data-i18n="public.countryOfOrigin">Country of Origin</th>
+              <th data-i18n="common.location">Location</th>
+              <th data-i18n="public.registrationDates">Registration Dates</th>
+              <th data-i18n="common.registrationNumber">Registration Number</th>
+            </tr>
+          </thead>
+          <tbody id="public-register-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script src="js/public.js"></script>
+</body>
+</html>

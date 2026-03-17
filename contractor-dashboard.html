@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="dashboard.contractorPageTitle">Contractor Dashboard</title>
+  <style>
+    body { background-color: #0f1115; }
+    .contractor-machinery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .machine-card {
+      background: #181b21;
+      border: 1px solid #2d323e;
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+  </style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="contractor-dashboard">
+  <div class="app-layout">
+    <aside class="sidebar" aria-label="Sidebar Navigation">
+      <div class="sidebar-header">
+        <span class="sidebar-title" data-i18n="common.cidaPlatform">CIDA Registration</span>
+      </div>
+      <nav class="sidebar-nav">
+        <ul>
+          <li><a href="#available-machinery" class="active" data-i18n="nav.availableMachinery">Available Machinery</a></li>
+          <li><a href="#my-rentals" data-i18n="nav.myRentals">My Rentals</a></li>
+        </ul>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar" aria-hidden="true" title="Contractor">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+          <div class="user-info">
+            <span class="user-name" id="contractor-user-summary">Contractor</span>
+            <span class="user-role" data-i18n="role.contractor">Registered Contractor</span>
+          </div>
+        </div>
+        <button id="logout-button" class="button button--ghost button--full" data-i18n="common.logout">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-nav">
+        <h1 class="page-title" data-i18n="dashboard.contractorTitle">Contractor Dashboard</h1>
+      </header>
+
+      <div class="content-wrapper">
+        <section id="available-machinery-section">
+          <h2 data-i18n="contractor.availableMachinery">Available Machinery for Rent</h2>
+          <p class="muted" data-i18n="contractor.availableMachineryIntro">Browse approved machinery available for project allocation.</p>
+          
+          <div id="machinery-list" class="contractor-machinery-grid">
+              <!-- Cards injected by JS -->
+          </div>
+        </section>
+
+        <section id="my-rentals-section" style="display:none;">
+          <h2 data-i18n="contractor.myRentals">My Rental Requests</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="table.machineReg">Machinery Reg No</th>
+                  <th data-i18n="table.type">Type</th>
+                  <th data-i18n="table.duration">Rental Duration</th>
+                  <th data-i18n="table.status">Status</th>
+                </tr>
+              </thead>
+              <tbody id="rentals-tbody">
+                <!-- Data injected by JS -->
+                <tr><td colspan="4" class="muted text-center" data-i18n="common.loading">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Rental Modal -->
+        <dialog id="rental-modal" class="modal">
+          <div class="modal-content">
+            <header>
+              <h2 data-i18n="modal.requestRental">Request Rental</h2>
+              <button type="button" class="modal-close" id="close-rental-modal" aria-label="Close modal">&times;</button>
+            </header>
+            <form id="rental-request-form" class="stack">
+              <input type="hidden" id="rental-machine-id">
+              <p><strong>Machine:</strong> <span id="rental-machine-display"></span></p>
+              
+              <label>
+                <span data-i18n="rental.startDate">Start Date</span>
+                <input type="date" id="rental-start" required>
+              </label>
+              
+              <label>
+                <span data-i18n="rental.endDate">End Date</span>
+                <input type="date" id="rental-end" required>
+              </label>
+              
+              <div id="rental-feedback" class="feedback"></div>
+              
+              <footer>
+                <button type="button" class="button button--outline" id="cancel-rental-btn" data-i18n="common.cancel">Cancel</button>
+                <button type="submit" class="button button--primary" data-i18n="common.submit">Submit Request</button>
+              </footer>
+            </form>
+          </div>
+        </dialog>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/migration.js"></script>
+  <script src="js/auth.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const sessionStore = sessionStorage.getItem("cida_session");
+        if(!sessionStore) {
+            window.location.href = "contractor-login.html";
+            return;
+        }
+        
+        const session = JSON.parse(sessionStore);
+        if(session.role !== 'contractor') {
+            window.location.href = "login.html";
+            return;
+        }
+
+        document.getElementById("contractor-user-summary").textContent = session.name;
+
+        // Simple tab navigation
+        const tabs = document.querySelectorAll(".sidebar-nav a");
+        tabs.forEach(tab => {
+            tab.addEventListener("click", function (e) {
+                e.preventDefault();
+                const target = this.getAttribute("href").replace("#", "");
+                
+                tabs.forEach(t => t.classList.remove("active"));
+                this.classList.add("active");
+
+                document.getElementById("available-machinery-section").style.display = target === "available-machinery" ? "block" : "none";
+                document.getElementById("my-rentals-section").style.display = target === "my-rentals" ? "block" : "none";
+
+                if (target === "available-machinery") loadMachinery();
+                if (target === "my-rentals") loadRentals();
+            });
+        });
+
+        const rentalModal = document.getElementById("rental-modal");
+        document.getElementById("close-rental-modal").addEventListener("click", () => rentalModal.close());
+        document.getElementById("cancel-rental-btn").addEventListener("click", () => rentalModal.close());
+
+        function loadMachinery() {
+            const list = document.getElementById("machinery-list");
+            list.innerHTML = `<p class="muted">Loading machinery...</p>`;
+            
+            // Wait a tick to simulate network if using localData, or we fetch if needed
+            // Currently, machinery is in localStorage from the app setup
+            setTimeout(() => {
+                const machines = CIDA_DB.getData("machinery");
+                // Only show approved machines
+                const available = machines.filter(m => m.status === 'approved');
+
+                if (available.length === 0) {
+                    list.innerHTML = `<p class="muted">No machinery currently available.</p>`;
+                    return;
+                }
+
+                list.innerHTML = available.map(m => `
+                    <div class="machine-card">
+                        <h3>${CIDA_UTILS.getMachineryTypeDetails(m.machineType).label}</h3>
+                        <p><strong>Reg No:</strong> ${m.registrationNumber}</p>
+                        <p><strong>Make/Model:</strong> ${m.make} ${m.model}</p>
+                        <button class="button button--primary button--full rent-btn" data-id="${m.id}" data-reg="${m.registrationNumber}" data-type="${m.machineType}">Request Rental</button>
+                    </div>
+                `).join('');
+
+                // Attach events
+                document.querySelectorAll(".rent-btn").forEach(btn => {
+                    btn.addEventListener("click", function() {
+                        const mId = this.dataset.id;
+                        const label = `${CIDA_UTILS.getMachineryTypeDetails(this.dataset.type).label} (${this.dataset.reg})`;
+                        
+                        document.getElementById("rental-machine-id").value = mId;
+                        document.getElementById("rental-machine-display").textContent = label;
+                        document.getElementById("rental-feedback").textContent = "";
+                        
+                        rentalModal.showModal();
+                    });
+                });
+            }, 300);
+        }
+
+        document.getElementById("rental-request-form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const feedback = document.getElementById("rental-feedback");
+            CIDA_UTILS.setFeedback(feedback, "Submitting...", "info");
+
+            const data = {
+                contractor_id: session.userId,
+                machine_id: document.getElementById("rental-machine-id").value,
+                start_date: document.getElementById("rental-start").value,
+                end_date: document.getElementById("rental-end").value
+            };
+
+            try {
+                const response = await fetch('api/rentals.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if(result.success) {
+                    CIDA_UTILS.setFeedback(feedback, "Rental requested successfully!", "success");
+                    this.reset();
+                    setTimeout(() => rentalModal.close(), 1500);
+                } else {
+                    CIDA_UTILS.setFeedback(feedback, result.message, "error");
+                }
+            } catch(error) {
+                CIDA_UTILS.setFeedback(feedback, "Failed to submit request.", "error");
+            }
+        });
+
+        async function loadRentals() {
+            const tbody = document.getElementById("rentals-tbody");
+            try {
+                const response = await fetch('api/rentals.php');
+                const result = await response.json();
+                
+                if(result.success) {
+                    // Filter rentals for this contractor
+                    const myRentals = result.rentals.filter(r => r.contractor_id == session.userId);
+                    
+                    if(myRentals.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center muted">No rentals found.</td></tr>`;
+                        return;
+                    }
+
+                    // Map machinery data from local storage
+                    const machines = CIDA_DB.getData("machinery");
+
+                    tbody.innerHTML = myRentals.map(r => {
+                        const m = machines.find(mac => mac.id === r.machine_id) || {};
+                        const typeLabel = m.machineType ? CIDA_UTILS.getMachineryTypeDetails(m.machineType).label : 'Unknown';
+                        const regNo = m.registrationNumber || r.machine_id;
+
+                        return `
+                            <tr>
+                                <td>${regNo}</td>
+                                <td>${typeLabel}</td>
+                                <td>${r.start_date} to ${r.end_date}</td>
+                                <td><span class="status-badge" data-tone="${r.status === 'approved' ? 'approved' : 'pending'}">${r.status.toUpperCase()}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error loading rentals</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Failed to connect to server.</td></tr>`;
+            }
+        }
+
+        // logout
+        document.getElementById("logout-button").addEventListener("click", function() {
+            sessionStorage.removeItem("cida_session");
+            window.location.href = "contractor-login.html";
+        });
+
+        // Initialize
+        loadMachinery();
+    });
+  </script>
+</body>
+</html>
