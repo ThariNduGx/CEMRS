@@ -165,45 +165,41 @@
         document.getElementById("close-rental-modal").addEventListener("click", () => rentalModal.close());
         document.getElementById("cancel-rental-btn").addEventListener("click", () => rentalModal.close());
 
-        function loadMachinery() {
+        async function loadMachinery() {
             const list = document.getElementById("machinery-list");
             list.innerHTML = `<p class="muted">Loading machinery...</p>`;
-            
-            // Wait a tick to simulate network if using localData, or we fetch if needed
-            // Currently, machinery is in localStorage from the app setup
-            setTimeout(() => {
-                const machines = CIDA_DB.getData("machinery");
-                // Only show approved machines
-                const available = machines.filter(m => m.status === 'approved');
 
-                if (available.length === 0) {
-                    list.innerHTML = `<p class="muted">No machinery currently available.</p>`;
-                    return;
-                }
+            const machines = await CIDA_DB.getData("machinery");
+            // Only show approved machines
+            const available = machines.filter(m => m.status === 'approved');
 
-                list.innerHTML = available.map(m => `
-                    <div class="machine-card">
-                        <h3>${CIDA_UTILS.getMachineryTypeDetails(m.machineType).label}</h3>
-                        <p><strong>Reg No:</strong> ${m.registrationNumber}</p>
-                        <p><strong>Make/Model:</strong> ${m.make} ${m.model}</p>
-                        <button class="button button--primary button--full rent-btn" data-id="${m.id}" data-reg="${m.registrationNumber}" data-type="${m.machineType}">Request Rental</button>
-                    </div>
-                `).join('');
+            if (available.length === 0) {
+                list.innerHTML = `<p class="muted">No machinery currently available.</p>`;
+                return;
+            }
 
-                // Attach events
-                document.querySelectorAll(".rent-btn").forEach(btn => {
-                    btn.addEventListener("click", function() {
-                        const mId = this.dataset.id;
-                        const label = `${CIDA_UTILS.getMachineryTypeDetails(this.dataset.type).label} (${this.dataset.reg})`;
-                        
-                        document.getElementById("rental-machine-id").value = mId;
-                        document.getElementById("rental-machine-display").textContent = label;
-                        document.getElementById("rental-feedback").textContent = "";
-                        
-                        rentalModal.showModal();
-                    });
+            list.innerHTML = available.map(m => `
+                <div class="machine-card">
+                    <h3>${CIDA_UTILS.getMachineryTypeDetails(m.type).label}</h3>
+                    <p><strong>Reg No:</strong> ${m.registrationNumber}</p>
+                    <p><strong>Make/Model:</strong> ${m.makeModel || '-'}</p>
+                    <button class="button button--primary button--full rent-btn" data-id="${m.id}" data-reg="${m.registrationNumber}" data-type="${m.type}">Request Rental</button>
+                </div>
+            `).join('');
+
+            // Attach events
+            document.querySelectorAll(".rent-btn").forEach(btn => {
+                btn.addEventListener("click", function() {
+                    const mId = this.dataset.id;
+                    const label = `${CIDA_UTILS.getMachineryTypeDetails(this.dataset.type).label} (${this.dataset.reg})`;
+
+                    document.getElementById("rental-machine-id").value = mId;
+                    document.getElementById("rental-machine-display").textContent = label;
+                    document.getElementById("rental-feedback").textContent = "";
+
+                    rentalModal.showModal();
                 });
-            }, 300);
+            });
         }
 
         document.getElementById("rental-request-form").addEventListener("submit", async function(e) {
@@ -253,12 +249,12 @@
                         return;
                     }
 
-                    // Map machinery data from local storage
-                    const machines = CIDA_DB.getData("machinery");
+                    // Map machinery data from API
+                    const machines = await CIDA_DB.getData("machinery");
 
                     tbody.innerHTML = myRentals.map(r => {
                         const m = machines.find(mac => mac.id === r.machine_id) || {};
-                        const typeLabel = m.machineType ? CIDA_UTILS.getMachineryTypeDetails(m.machineType).label : 'Unknown';
+                        const typeLabel = m.type ? CIDA_UTILS.getMachineryTypeDetails(m.type).label : 'Unknown';
                         const regNo = m.registrationNumber || r.machine_id;
 
                         return `
