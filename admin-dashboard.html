@@ -42,8 +42,7 @@
   <main class="page-shell workspace-shell">
     <nav class="panel workspace-nav">
       <p class="eyebrow">Admin Menu</p>
-      <a href="#maintenance-dashboard">Maintenance Overview</a>
-      <a href="#maintenance-history-section">Maintenance Records</a>
+      <a href="#admin-report-section">Submit Report</a>
       <a href="#registration-summary-section">Registration Summary</a>
       <a href="#contractors-management-section">Contractor Management</a>
       <a href="#maintenance-settings-section">Settings</a>
@@ -51,67 +50,56 @@
 
     <div class="workspace-main">
 
-      <!-- Maintenance Overview -->
-      <section id="maintenance-dashboard" class="panel">
+      <!-- Submit Maintenance Report -->
+      <section id="admin-report-section" class="panel">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Dashboard</p>
-            <h2>Maintenance Overview</h2>
+            <p class="eyebrow">Maintenance</p>
+            <h2>Submit Maintenance Report</h2>
           </div>
         </div>
 
-        <div class="stats-grid stats-grid--three">
-          <article class="stat-card">
-            <span>Total Records</span>
-            <strong id="maintenance-total-records">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>Completed</span>
-            <strong id="maintenance-completed-records">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>Scheduled / Overdue</span>
-            <strong id="maintenance-active-records">0</strong>
-          </article>
-        </div>
+        <form id="admin-maintenance-report-form" class="grid-form">
+          <label>
+            <span>Equipment Name</span>
+            <input type="text" name="equipmentName" required placeholder="e.g. CAT 320 Excavator">
+          </label>
+          <label>
+            <span>Equipment Reg No / ID</span>
+            <input type="text" name="equipmentId" required placeholder="e.g. EX-2024-001">
+          </label>
+          <label>
+            <span>Maintenance Date</span>
+            <input type="date" name="maintenanceDate" required>
+          </label>
+          <label>
+            <span>Maintenance Type</span>
+            <select name="maintenanceType" required>
+              <option value="service">Service</option>
+              <option value="repair">Repair</option>
+            </select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select name="status" required>
+              <option value="scheduled">Scheduled</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </label>
+          <label>
+            <span>Location</span>
+            <input type="text" name="location" required placeholder="e.g. Colombo">
+          </label>
+          <label class="grid-span-2">
+            <span>Site</span>
+            <input type="text" name="site" required placeholder="e.g. Site A">
+          </label>
+          <button class="button button--primary grid-span-2" type="submit" style="margin-top: 1rem;">Submit Report</button>
+        </form>
 
-        <div class="dashboard-overview-grid">
-          <article class="dashboard-note">
-            <h3>Service vs Repair</h3>
-            <p id="maintenance-type-summary" class="muted"></p>
-          </article>
-          <article class="dashboard-note">
-            <h3>Location Coverage</h3>
-            <ul id="maintenance-location-summary" class="report-list"></ul>
-          </article>
-        </div>
-      </section>
-
-      <!-- Maintenance Records (owner-submitted, read-only) -->
-      <section id="maintenance-history-section" class="panel">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Maintenance Records</p>
-            <h2>Owner-Submitted Maintenance Entries</h2>
-          </div>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Owner</th>
-                <th>Equipment</th>
-                <th>Maintenance Date</th>
-                <th>Status</th>
-                <th>Type</th>
-                <th>Location / Site</th>
-                <th>Attachments</th>
-              </tr>
-            </thead>
-            <tbody id="maintenance-history-body"></tbody>
-          </table>
-        </div>
+        <div id="admin-report-feedback" class="feedback" aria-live="polite"></div>
       </section>
 
       <!-- Registration Summary -->
