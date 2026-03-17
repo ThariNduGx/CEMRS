@@ -167,7 +167,7 @@
       return;
     }
 
-    if (page === "owner-dashboard") {
+    if (page === "owner-dashboard" || page === "owner-maintenance-dashboard") {
       var owner = await requireRole("owner");
       if (!owner) {
         return;
