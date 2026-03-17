@@ -43,38 +43,37 @@
         .join("");
   }
 
-  function getOwnerRecords(ownerId) {
-    return CIDA_DB.getData("machinery")
-      .filter(function (item) {
-        return item.ownerId === ownerId;
-      })
-      .sort(function (a, b) {
-        return (b.submittedAt || 0) - (a.submittedAt || 0);
-      });
+  async function getOwnerRecords(ownerId) {
+    var records = await CIDA_DB.getData("machinery", { ownerId: ownerId });
+    return records.sort(function (a, b) {
+      return (b.submittedAt || 0) - (a.submittedAt || 0);
+    });
   }
 
   function isWithinRenewalWindow(row) {
     return row.status === "approved" && row.expiryDate && row.expiryDate >= Date.now() && row.expiryDate - Date.now() <= DAYS_30;
   }
 
-  function updateFeePreview(ownerId) {
+  async function updateFeePreview(ownerId) {
     var feePreview = document.getElementById("owner-fee-preview");
     if (!feePreview) {
       return 0;
     }
 
-    var fee = calculateFee(getOwnerRecords(ownerId).length);
+    var records = await getOwnerRecords(ownerId);
+    var fee = calculateFee(records.length);
     feePreview.textContent = getText("owner.feeTier", "Current fee tier: Rs. {fee}", { fee: fee });
     return fee;
   }
 
-  function renderNotifications(ownerId) {
+  async function renderNotifications(ownerId) {
     var container = document.getElementById("owner-notifications");
     if (!container) {
       return;
     }
 
-    var expiring = getOwnerRecords(ownerId).filter(isWithinRenewalWindow);
+    var records = await getOwnerRecords(ownerId);
+    var expiring = records.filter(isWithinRenewalWindow);
     if (!expiring.length) {
       container.hidden = true;
       container.innerHTML = "";
@@ -199,13 +198,13 @@
     return actions.join("");
   }
 
-  function renderOwnerTable(ownerId) {
+  async function renderOwnerTable(ownerId) {
     var body = document.getElementById("owner-machinery-body");
     if (!body) {
       return;
     }
 
-    var rows = getOwnerRecords(ownerId);
+    var rows = await getOwnerRecords(ownerId);
     if (!rows.length) {
       body.innerHTML =
         '<tr><td colspan="7" class="empty-state">' +
@@ -239,13 +238,13 @@
       .join("");
 
     body.querySelectorAll(".js-renew").forEach(function (button) {
-      button.addEventListener("click", function () {
-        CIDA_DB.update("machinery", button.dataset.id, {
+      button.addEventListener("click", async function () {
+        await CIDA_DB.update("machinery", button.dataset.id, {
           status: "pending_renewal",
           renewalRequestedAt: Date.now(),
         });
-        renderNotifications(ownerId);
-        renderOwnerTable(ownerId);
+        await renderNotifications(ownerId);
+        await renderOwnerTable(ownerId);
         CIDA_UTILS.setFeedback(
           document.getElementById("owner-form-feedback"),
           getText("owner.renewalRequestedFeedback", "Renewal request submitted for review."),
@@ -315,9 +314,9 @@
       "</article>";
   }
 
-  function openCertificate(machineId) {
-    var owner = CIDA_AUTH.getCurrentUser();
-    var machine = CIDA_DB.findById("machinery", machineId);
+  async function openCertificate(machineId) {
+    var owner = await CIDA_AUTH.getCurrentUser();
+    var machine = await CIDA_DB.findById("machinery", machineId);
     if (!owner || !machine) {
       return;
     }
@@ -327,9 +326,9 @@
     openModal(document.getElementById("owner-certificate-modal"));
   }
 
-  function printCertificate() {
-    var owner = CIDA_AUTH.getCurrentUser();
-    var machine = activeCertificateId ? CIDA_DB.findById("machinery", activeCertificateId) : null;
+  async function printCertificate() {
+    var owner = await CIDA_AUTH.getCurrentUser();
+    var machine = activeCertificateId ? await CIDA_DB.findById("machinery", activeCertificateId) : null;
     var type = machine ? CIDA_UTILS.getMachineryTypeDetails(machine.type) : null;
     var printWindow;
 
@@ -381,12 +380,12 @@
     printWindow.print();
   }
 
-  function openAppealModal(machineId) {
+  async function openAppealModal(machineId) {
     var modal = document.getElementById("owner-appeal-modal");
     var form = document.getElementById("owner-appeal-form");
     var summary = document.getElementById("owner-appeal-summary");
     var feedback = document.getElementById("owner-appeal-feedback");
-    var machine = CIDA_DB.findById("machinery", machineId);
+    var machine = await CIDA_DB.findById("machinery", machineId);
 
     if (!modal || !form || !summary || !machine) {
       return;
@@ -406,14 +405,14 @@
       return;
     }
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       var machineId;
       var machine;
       var message;
 
       event.preventDefault();
       machineId = form.dataset.machineId;
-      machine = CIDA_DB.findById("machinery", machineId);
+      machine = await CIDA_DB.findById("machinery", machineId);
       message = String((new FormData(form)).get("appealMessage") || "").trim();
 
       if (!machine || !message) {
@@ -421,7 +420,7 @@
         return;
       }
 
-      CIDA_DB.update("machinery", machineId, {
+      await CIDA_DB.update("machinery", machineId, {
         appeal: {
           status: "submitted",
           message: message,
@@ -432,7 +431,7 @@
       });
 
       closeModal(document.getElementById("owner-appeal-modal"));
-      renderOwnerTable(ownerId);
+      await renderOwnerTable(ownerId);
       CIDA_UTILS.setFeedback(
         document.getElementById("owner-form-feedback"),
         getText("owner.appealSubmittedFeedback", "Appeal submitted and forwarded to CIDA for review."),
@@ -465,14 +464,14 @@
       return;
     }
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       var formData;
       var fee;
       var documents;
 
       event.preventDefault();
       formData = new FormData(form);
-      fee = updateFeePreview(owner.id);
+      fee = await updateFeePreview(owner.id);
       documents = {
         revenueLicense: (formData.get("revenueLicense") || {}).name || "",
         motorTrafficCertificate: (formData.get("motorTrafficCertificate") || {}).name || "",
@@ -480,7 +479,7 @@
         engineerReport: (formData.get("engineerReport") || {}).name || "",
       };
 
-      CIDA_DB.insert("machinery", {
+      await CIDA_DB.insert("machinery", {
         ownerId: owner.id,
         type: String(formData.get("type") || ""),
         makeModel: String(formData.get("makeModel") || "").trim(),
@@ -501,32 +500,32 @@
       });
 
       form.reset();
-      updateFeePreview(owner.id);
-      renderNotifications(owner.id);
-      renderOwnerTable(owner.id);
+      await updateFeePreview(owner.id);
+      await renderNotifications(owner.id);
+      await renderOwnerTable(owner.id);
       CIDA_UTILS.setFeedback(feedback, getText("owner.submissionSaved", "Submission successful. Your fee is Rs. {fee}.", { fee: fee }), "success");
     });
   }
 
-  function renderPage(owner) {
+  async function renderPage(owner) {
     populateMachineryTypes();
-    updateFeePreview(owner.id);
-    renderNotifications(owner.id);
-    renderOwnerTable(owner.id);
+    await updateFeePreview(owner.id);
+    await renderNotifications(owner.id);
+    await renderOwnerTable(owner.id);
 
     if (activeCertificateId && !document.getElementById("owner-certificate-modal").hidden) {
-      openCertificate(activeCertificateId);
+      await openCertificate(activeCertificateId);
     }
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  document.addEventListener("DOMContentLoaded", async function () {
     var owner;
 
     if (document.body.dataset.page !== "owner-dashboard") {
       return;
     }
 
-    owner = CIDA_AUTH.getCurrentUser();
+    owner = await CIDA_AUTH.getCurrentUser();
     if (!owner) {
       return;
     }
@@ -534,6 +533,6 @@
     wireModalControls();
     wireAppealForm(owner.id);
     wireForm(owner);
-    renderPage(owner);
+    await renderPage(owner);
   });
 })();

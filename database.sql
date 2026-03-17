@@ -47,3 +47,69 @@ CREATE TABLE IF NOT EXISTS `rentals` (
   PRIMARY KEY (`id`),
   FOREIGN KEY (`contractor_id`) REFERENCES `contractors`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ----------------------------------------------------------
+-- Table: users
+-- Stores CIDA admin, director general, and equipment owner accounts.
+-- Passwords are bcrypt-hashed. Demo seed data is inserted by the
+-- Node server on first startup if the table is empty.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `users` (
+  `id`              VARCHAR(50)   NOT NULL,
+  `name`            VARCHAR(100)  NOT NULL,
+  `company_name`    VARCHAR(150)  DEFAULT NULL,
+  `email`           VARCHAR(150)  NOT NULL UNIQUE,
+  `password`        VARCHAR(255)  NOT NULL,
+  `role`            ENUM('admin', 'director_general', 'owner') NOT NULL,
+  `contact_details` VARCHAR(50)   DEFAULT '',
+  `address`         TEXT          DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ----------------------------------------------------------
+-- Table: machinery
+-- Stores equipment registration applications and their lifecycle
+-- (pending → approved / rejected / revoked, renewal, appeals).
+-- documents and appeal are stored as JSON.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `machinery` (
+  `id`                   VARCHAR(50)   NOT NULL,
+  `owner_id`             VARCHAR(50)   NOT NULL,
+  `type`                 VARCHAR(20)   NOT NULL,
+  `make_model`           VARCHAR(150)  NOT NULL,
+  `country_of_origin`    VARCHAR(100)  DEFAULT '',
+  `location`             VARCHAR(150)  DEFAULT '',
+  `status`               VARCHAR(30)   DEFAULT 'pending',
+  `registration_number`  VARCHAR(50)   DEFAULT NULL,
+  `registration_date`    BIGINT        DEFAULT NULL,
+  `expiry_date`          BIGINT        DEFAULT NULL,
+  `rejection_reason`     TEXT          DEFAULT '',
+  `fee_at_submission`    INT           DEFAULT 0,
+  `renewal_count`        INT           DEFAULT 0,
+  `renewal_requested_at` BIGINT        DEFAULT NULL,
+  `certificate_issued_at` BIGINT       DEFAULT NULL,
+  `submitted_at`         BIGINT        DEFAULT NULL,
+  `documents`            JSON          DEFAULT NULL,
+  `appeal`               JSON          DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`owner_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ----------------------------------------------------------
+-- Table: maintenance
+-- Stores equipment maintenance records logged by the admin.
+-- documents is stored as JSON.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `maintenance` (
+  `id`               VARCHAR(50)   NOT NULL,
+  `equipment_id`     VARCHAR(100)  NOT NULL,
+  `equipment_name`   VARCHAR(150)  NOT NULL,
+  `maintenance_date` VARCHAR(10)   NOT NULL,
+  `status`           VARCHAR(30)   DEFAULT 'scheduled',
+  `maintenance_type` VARCHAR(20)   DEFAULT 'service',
+  `location`         VARCHAR(150)  DEFAULT '',
+  `site`             VARCHAR(150)  DEFAULT '',
+  `documents`        JSON          DEFAULT NULL,
+  `created_at`       BIGINT        DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

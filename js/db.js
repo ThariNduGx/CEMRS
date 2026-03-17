@@ -1,51 +1,59 @@
 (function () {
   var DB = {
-    getData: function (table) {
+    getData: async function (table, filters) {
       try {
-        return JSON.parse(localStorage.getItem(table)) || [];
+        var url = "/api/" + table;
+        if (filters) {
+          url += "?" + new URLSearchParams(filters).toString();
+        }
+        var res = await fetch(url);
+        var json = await res.json();
+        return json.data || [];
       } catch (error) {
-        console.error("Failed to parse table", table, error);
+        console.error("Failed to fetch table", table, error);
         return [];
       }
     },
 
-    saveData: function (table, data) {
-      localStorage.setItem(table, JSON.stringify(data));
+    insert: async function (table, record) {
+      try {
+        var res = await fetch("/api/" + table, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(record),
+        });
+        var json = await res.json();
+        return json.data || null;
+      } catch (error) {
+        console.error("Failed to insert into", table, error);
+        return null;
+      }
     },
 
-    insert: function (table, record) {
-      var data = DB.getData(table);
-      var entity = Object.assign(
-        {
-          id: table.slice(0, 1) + "_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
-        },
-        record
-      );
-      data.push(entity);
-      DB.saveData(table, data);
-      return entity;
+    update: async function (table, id, updatedFields) {
+      try {
+        var res = await fetch("/api/" + table + "/" + id, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedFields),
+        });
+        var json = await res.json();
+        return json.data || null;
+      } catch (error) {
+        console.error("Failed to update", table, id, error);
+        return null;
+      }
     },
 
-    update: function (table, id, updatedFields) {
-      var data = DB.getData(table);
-      var next = data.map(function (record) {
-        if (record.id !== id) {
-          return record;
-        }
-
-        return Object.assign({}, record, updatedFields);
-      });
-
-      DB.saveData(table, next);
-      return next.find(function (record) {
-        return record.id === id;
-      }) || null;
-    },
-
-    findById: function (table, id) {
-      return DB.getData(table).find(function (record) {
-        return record.id === id;
-      }) || null;
+    findById: async function (table, id) {
+      try {
+        var res = await fetch("/api/" + table + "/" + id);
+        var json = await res.json();
+        return json.data || null;
+      } catch (error) {
+        console.error("Failed to find by id in", table, error);
+        return null;
+      }
     },
   };
 

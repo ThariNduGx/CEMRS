@@ -3,9 +3,11 @@
     return CIDA_UTILS.getText(key, fallback, replacements);
   }
 
-  function getApprovedRows() {
-    var users = CIDA_DB.getData("users");
-    return CIDA_DB.getData("machinery")
+  async function getApprovedRows() {
+    var users = await CIDA_DB.getData("users");
+    var machinery = await CIDA_DB.getData("machinery");
+
+    return machinery
       .filter(function (item) {
         return item.status === "approved";
       })
@@ -71,13 +73,13 @@
     }
   }
 
-  function wireFilters() {
+  async function wireFilters() {
     var form = document.getElementById("public-filters");
     if (!form) {
       return;
     }
 
-    var rows = getApprovedRows();
+    var rows = await getApprovedRows();
 
     function applyFilters() {
       var formData = new FormData(form);
@@ -102,5 +104,7 @@
     renderTable(rows);
   }
 
-  document.addEventListener("DOMContentLoaded", wireFilters);
+  document.addEventListener("DOMContentLoaded", async function () {
+    await wireFilters();
+  });
 })();

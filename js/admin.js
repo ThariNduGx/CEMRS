@@ -20,8 +20,9 @@
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   }
 
-  function getMaintenanceRecords() {
-    return CIDA_DB.getData("maintenance").slice().sort(function (a, b) {
+  async function getMaintenanceRecords() {
+    var records = await CIDA_DB.getData("maintenance");
+    return records.slice().sort(function (a, b) {
       return new Date(b.maintenanceDate || 0).getTime() - new Date(a.maintenanceDate || 0).getTime();
     });
   }
@@ -194,8 +195,8 @@
       .join("");
   }
 
-  function renderAll() {
-    var records = getMaintenanceRecords();
+  async function renderAll() {
+    var records = await getMaintenanceRecords();
     renderDashboard(records);
     renderHistory(records);
     renderReports(records);
@@ -216,7 +217,7 @@
       statusField.value = readSettings().defaultStatus;
     }
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       var formData;
       var settings;
 
@@ -224,7 +225,7 @@
       formData = new FormData(form);
       settings = readSettings();
 
-      CIDA_DB.insert("maintenance", {
+      await CIDA_DB.insert("maintenance", {
         equipmentId: String(formData.get("equipmentId") || "").trim(),
         equipmentName: String(formData.get("equipmentName") || "").trim(),
         maintenanceDate: String(formData.get("maintenanceDate") || "").trim(),
@@ -245,7 +246,7 @@
         statusField.value = settings.defaultStatus;
       }
       CIDA_UTILS.setFeedback(feedback, "Maintenance record saved successfully.", "success");
-      renderAll();
+      await renderAll();
     });
   }
 
@@ -263,7 +264,7 @@
     defaultStatusField.value = settings.defaultStatus;
     notificationWindowField.value = settings.notificationWindow;
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       var formData;
       var nextSettings;
 
@@ -277,7 +278,7 @@
       saveSettings(nextSettings);
       document.getElementById("maintenance-form").querySelector('[name="status"]').value = nextSettings.defaultStatus;
       CIDA_UTILS.setFeedback(feedback, "Maintenance settings updated.", "success");
-      renderAlerts(getMaintenanceRecords());
+      renderAlerts(await getMaintenanceRecords());
     });
   }
 
@@ -400,7 +401,7 @@
       }
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  document.addEventListener("DOMContentLoaded", async function () {
     var notifBtn = document.getElementById("notification-button");
     var notifMenu = document.getElementById("notification-dropdown");
 
@@ -424,6 +425,6 @@
     wireForm();
     wireSettings();
     wireNavigation();
-    renderAll();
+    await renderAll();
   });
 })();

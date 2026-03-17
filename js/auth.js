@@ -19,13 +19,13 @@
     sessionStorage.removeItem("cida_session");
   }
 
-  function getCurrentUser() {
+  async function getCurrentUser() {
     var session = getSession();
     if (!session) {
       return null;
     }
 
-    return CIDA_DB.findById("users", session.userId);
+    return await CIDA_DB.findById("users", session.userId);
   }
 
   function redirectForRole(role) {
@@ -38,14 +38,14 @@
     window.location.href = routeMap[role] || "login.html";
   }
 
-  function requireRole(role) {
+  async function requireRole(role) {
     var session = getSession();
     if (!session || session.role !== role) {
       window.location.href = "login.html";
       return null;
     }
 
-    return CIDA_DB.findById("users", session.userId);
+    return await CIDA_DB.findById("users", session.userId);
   }
 
   function wireLogout() {
@@ -67,23 +67,31 @@
       return;
     }
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       event.preventDefault();
       var formData = new FormData(form);
       var email = String(formData.get("email") || "").trim().toLowerCase();
       var password = String(formData.get("password") || "");
-      var user = CIDA_DB.getData("users").find(function (item) {
-        return item.email.toLowerCase() === email && item.password === password;
-      });
 
-      if (!user) {
-        CIDA_UTILS.setFeedback(feedback, getText("feedback.invalidLogin", "Invalid email or password."), "error");
-        return;
+      try {
+        var res = await fetch("/api/users/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, password: password }),
+        });
+        var result = await res.json();
+
+        if (!result.success) {
+          CIDA_UTILS.setFeedback(feedback, result.message || getText("feedback.invalidLogin", "Invalid email or password."), "error");
+          return;
+        }
+
+        setSession({ userId: result.data.id, role: result.data.role });
+        CIDA_UTILS.setFeedback(feedback, getText("feedback.loginSuccess", "Login successful. Redirecting..."), "success");
+        redirectForRole(result.data.role);
+      } catch (err) {
+        CIDA_UTILS.setFeedback(feedback, "Network error. Please try again.", "error");
       }
-
-      setSession({ userId: user.id, role: user.role });
-      CIDA_UTILS.setFeedback(feedback, getText("feedback.loginSuccess", "Login successful. Redirecting..."), "success");
-      redirectForRole(user.role);
     });
   }
 
@@ -94,7 +102,7 @@
       return;
     }
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       event.preventDefault();
       var formData = new FormData(form);
       var name = String(formData.get("name") || "").trim();
@@ -104,10 +112,6 @@
       var confirmPassword = String(formData.get("confirmPassword") || "");
       var contactDetails = String(formData.get("contactDetails") || "").trim();
       var address = String(formData.get("address") || "").trim();
-      var users = CIDA_DB.getData("users");
-      var exists = users.some(function (user) {
-        return user.email.toLowerCase() === email;
-      });
 
       if (!name || !companyName || !contactDetails || !address) {
         CIDA_UTILS.setFeedback(feedback, getText("feedback.completeRegistration", "Complete all required registration fields."), "error");
@@ -124,29 +128,37 @@
         return;
       }
 
-      if (exists) {
-        CIDA_UTILS.setFeedback(feedback, getText("feedback.emailExists", "An account already exists for that email."), "error");
-        return;
+      try {
+        var res = await fetch("/api/users/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name,
+            companyName: companyName,
+            email: email,
+            password: password,
+            contactDetails: contactDetails,
+            address: address,
+          }),
+        });
+        var result = await res.json();
+
+        if (!result.success) {
+          CIDA_UTILS.setFeedback(feedback, result.message, "error");
+          return;
+        }
+
+        form.reset();
+        setSession({ userId: result.data.id, role: result.data.role });
+        CIDA_UTILS.setFeedback(feedback, getText("feedback.accountCreated", "Account created. Redirecting to owner dashboard..."), "success");
+        redirectForRole("owner");
+      } catch (err) {
+        CIDA_UTILS.setFeedback(feedback, "Network error. Please try again.", "error");
       }
-
-      var newUser = CIDA_DB.insert("users", {
-        name: name,
-        companyName: companyName,
-        email: email,
-        password: password,
-        role: "owner",
-        contactDetails: contactDetails,
-        address: address,
-      });
-
-      form.reset();
-      setSession({ userId: newUser.id, role: newUser.role });
-      CIDA_UTILS.setFeedback(feedback, getText("feedback.accountCreated", "Account created. Redirecting to owner dashboard..."), "success");
-      redirectForRole("owner");
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  document.addEventListener("DOMContentLoaded", async function () {
     var page = document.body.dataset.page;
     var session = getSession();
 
@@ -156,7 +168,7 @@
     }
 
     if (page === "owner-dashboard") {
-      var owner = requireRole("owner");
+      var owner = await requireRole("owner");
       if (!owner) {
         return;
       }
@@ -168,7 +180,7 @@
     }
 
     if (page === "admin-dashboard") {
-      var admin = requireRole("admin");
+      var admin = await requireRole("admin");
       if (!admin) {
         return;
       }
@@ -180,7 +192,7 @@
     }
 
     if (page === "director-general-dashboard") {
-      var directorGeneral = requireRole("director_general");
+      var directorGeneral = await requireRole("director_general");
       if (!directorGeneral) {
         return;
       }
