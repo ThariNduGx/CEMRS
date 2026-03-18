@@ -110,20 +110,23 @@
   <script src="js/auth.js"></script>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const sessionStore = sessionStorage.getItem("cida_session");
-        if(!sessionStore) {
+    document.addEventListener("DOMContentLoaded", async function () {
+        const session = CIDA_AUTH.getSession();
+        if (!session || session.role !== 'contractor') {
             window.location.href = "contractor-login.html";
             return;
         }
-        
-        const session = JSON.parse(sessionStore);
-        if(session.role !== 'contractor') {
-            window.location.href = "login.html";
-            return;
-        }
 
-        document.getElementById("contractor-user-summary").textContent = session.name;
+        // Load user name from the unified users table (contractor is now a user)
+        const user = await CIDA_DB.findById("users", session.userId);
+        document.getElementById("contractor-user-summary").textContent = user ? user.name : "Contractor";
+
+        // Helper: build auth headers for direct fetch calls
+        function authH(contentType) {
+            var h = { "Authorization": "Bearer " + session.token };
+            if (contentType) h["Content-Type"] = "application/json";
+            return h;
+        }
 
         // Simple tab navigation
         const tabs = document.querySelectorAll(".sidebar-nav a");
@@ -131,13 +134,10 @@
             tab.addEventListener("click", function (e) {
                 e.preventDefault();
                 const target = this.getAttribute("href").replace("#", "");
-                
                 tabs.forEach(t => t.classList.remove("active"));
                 this.classList.add("active");
-
                 document.getElementById("available-machinery-section").style.display = target === "available-machinery" ? "block" : "none";
                 document.getElementById("my-rentals-section").style.display = target === "my-rentals" ? "block" : "none";
-
                 if (target === "available-machinery") loadMachinery();
                 if (target === "my-rentals") loadRentals();
             });
@@ -150,35 +150,29 @@
         async function loadMachinery() {
             const list = document.getElementById("machinery-list");
             list.innerHTML = `<p class="muted">Loading machinery...</p>`;
-
+            // Server already filters to approved-only for contractor role
             const machines = await CIDA_DB.getData("machinery");
-            // Only show approved machines
-            const available = machines.filter(m => m.status === 'approved');
 
-            if (available.length === 0) {
+            if (machines.length === 0) {
                 list.innerHTML = `<p class="muted">No machinery currently available.</p>`;
                 return;
             }
 
-            list.innerHTML = available.map(m => `
+            list.innerHTML = machines.map(m => `
                 <div class="machine-card">
-                    <h3>${CIDA_UTILS.getMachineryTypeDetails(m.type).label}</h3>
-                    <p><strong>Reg No:</strong> ${m.registrationNumber}</p>
-                    <p><strong>Make/Model:</strong> ${m.makeModel || '-'}</p>
-                    <button class="button button--primary button--full rent-btn" data-id="${m.id}" data-reg="${m.registrationNumber}" data-type="${m.type}">Request Rental</button>
+                    <h3>${CIDA_UTILS.escapeHtml(CIDA_UTILS.getMachineryTypeDetails(m.type).label)}</h3>
+                    <p><strong>Reg No:</strong> ${CIDA_UTILS.escapeHtml(m.registrationNumber || '-')}</p>
+                    <p><strong>Make/Model:</strong> ${CIDA_UTILS.escapeHtml(m.makeModel || '-')}</p>
+                    <button class="button button--primary button--full rent-btn" data-id="${CIDA_UTILS.escapeHtml(m.id)}" data-reg="${CIDA_UTILS.escapeHtml(m.registrationNumber || '')}" data-type="${CIDA_UTILS.escapeHtml(m.type)}">Request Rental</button>
                 </div>
             `).join('');
 
-            // Attach events
             document.querySelectorAll(".rent-btn").forEach(btn => {
                 btn.addEventListener("click", function() {
-                    const mId = this.dataset.id;
-                    const label = `${CIDA_UTILS.getMachineryTypeDetails(this.dataset.type).label} (${this.dataset.reg})`;
-
-                    document.getElementById("rental-machine-id").value = mId;
+                    const label = CIDA_UTILS.getMachineryTypeDetails(this.dataset.type).label + " (" + this.dataset.reg + ")";
+                    document.getElementById("rental-machine-id").value = this.dataset.id;
                     document.getElementById("rental-machine-display").textContent = label;
                     document.getElementById("rental-feedback").textContent = "";
-
                     rentalModal.showModal();
                 });
             });
@@ -189,8 +183,8 @@
             const feedback = document.getElementById("rental-feedback");
             CIDA_UTILS.setFeedback(feedback, "Submitting...", "info");
 
+            // contractor_id is derived server-side from the JWT claim — do not send it
             const data = {
-                contractor_id: session.userId,
                 machine_id: document.getElementById("rental-machine-id").value,
                 start_date: document.getElementById("rental-start").value,
                 end_date: document.getElementById("rental-end").value
@@ -199,12 +193,11 @@
             try {
                 const response = await fetch('api/rentals.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authH(true),
                     body: JSON.stringify(data)
                 });
-                
                 const result = await response.json();
-                if(result.success) {
+                if (result.success) {
                     CIDA_UTILS.setFeedback(feedback, "Rental requested successfully!", "success");
                     this.reset();
                     setTimeout(() => rentalModal.close(), 1500);
@@ -219,52 +212,44 @@
         async function loadRentals() {
             const tbody = document.getElementById("rentals-tbody");
             try {
-                const response = await fetch('api/rentals.php');
+                // Server now filters rentals to this contractor's own records via JWT
+                const response = await fetch('api/rentals.php', { headers: authH(false) });
                 const result = await response.json();
-                
-                if(result.success) {
-                    // Filter rentals for this contractor
-                    const myRentals = result.rentals.filter(r => r.contractor_id == session.userId);
-                    
-                    if(myRentals.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" class="text-center muted">No rentals found.</td></tr>`;
-                        return;
-                    }
 
-                    // Map machinery data from API
-                    const machines = await CIDA_DB.getData("machinery");
-
-                    tbody.innerHTML = myRentals.map(r => {
-                        const m = machines.find(mac => mac.id === r.machine_id) || {};
-                        const typeLabel = m.type ? CIDA_UTILS.getMachineryTypeDetails(m.type).label : 'Unknown';
-                        const regNo = m.registrationNumber || r.machine_id;
-                        const statusTone = r.status === 'approved' ? 'approved' : r.status === 'rejected' ? 'rejected' : r.status === 'completed' ? 'approved' : 'pending';
-
-                        return `
-                            <tr>
-                                <td>${CIDA_UTILS.escapeHtml(regNo)}</td>
-                                <td>${CIDA_UTILS.escapeHtml(typeLabel)}</td>
-                                <td>${CIDA_UTILS.escapeHtml(r.start_date)} to ${CIDA_UTILS.escapeHtml(r.end_date)}</td>
-                                <td><span class="badge badge--${statusTone}">${CIDA_UTILS.escapeHtml(r.status.charAt(0).toUpperCase() + r.status.slice(1))}</span></td>
-                            </tr>
-                        `;
-                    }).join('');
-
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error loading rentals</td></tr>`;
+                if (!result.success) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center">Error loading rentals.</td></tr>`;
+                    return;
                 }
+
+                const rentals = result.rentals || [];
+                if (rentals.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center">No rental requests found.</td></tr>`;
+                    return;
+                }
+
+                const machines = await CIDA_DB.getData("machinery");
+                tbody.innerHTML = rentals.map(r => {
+                    const m = machines.find(mac => mac.id === r.machine_id) || {};
+                    const typeLabel = m.type ? CIDA_UTILS.getMachineryTypeDetails(m.type).label : 'Unknown';
+                    const regNo = m.registrationNumber || r.machine_id;
+                    const tone = r.status === 'approved' || r.status === 'completed' ? 'approved' : r.status === 'rejected' ? 'rejected' : 'pending';
+                    return `<tr>
+                        <td>${CIDA_UTILS.escapeHtml(regNo)}</td>
+                        <td>${CIDA_UTILS.escapeHtml(typeLabel)}</td>
+                        <td>${CIDA_UTILS.escapeHtml(r.start_date)} to ${CIDA_UTILS.escapeHtml(r.end_date)}</td>
+                        <td><span class="badge badge--${tone}">${CIDA_UTILS.escapeHtml(r.status.charAt(0).toUpperCase() + r.status.slice(1))}</span></td>
+                    </tr>`;
+                }).join('');
             } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Failed to connect to server.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center">Failed to connect to server.</td></tr>`;
             }
         }
 
-        // logout
         document.getElementById("logout-button").addEventListener("click", function() {
-            sessionStorage.removeItem("cida_session");
+            CIDA_AUTH.clearSession();
             window.location.href = "contractor-login.html";
         });
 
-        // Initialize
         loadMachinery();
     });
   </script>

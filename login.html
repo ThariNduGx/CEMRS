@@ -51,6 +51,18 @@
 
   <script src="js/db.js"></script>
   <script src="js/migration.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var langBar = document.createElement("div");
+      langBar.className = "lang-toggle";
+      langBar.style.cssText = "display:flex;gap:.25rem;margin:1rem auto 0;justify-content:center;";
+      langBar.innerHTML = '<button class="button button--ghost lang-btn" data-lang="en">EN</button>' +
+        '<button class="button button--ghost lang-btn" data-lang="si">සිං</button>' +
+        '<button class="button button--ghost lang-btn" data-lang="ta">தமிழ்</button>';
+      document.querySelector(".auth-card").appendChild(langBar);
+    });
+  </script>
 </body>
 </html>

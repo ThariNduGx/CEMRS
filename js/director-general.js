@@ -142,8 +142,9 @@
     }
 
     var all = await CIDA_DB.getData("machinery");
+    // Priority 3: DG only sees admin_approved (reviewed by admin) + pending_renewal (direct re-certification)
     pendingRows = all.filter(function (item) {
-      return item.status === "pending" || item.status === "pending_renewal";
+      return item.status === "admin_approved" || item.status === "pending_renewal";
     });
 
     if (!pendingRows.length) {
@@ -340,6 +341,8 @@
     });
   }
 
+  var dgStatusChart = null;
+
   async function renderReports() {
     var rows = await CIDA_DB.getData("machinery");
     var totals = {
@@ -348,6 +351,7 @@
       totalRejected: 0,
       totalRenewals: 0,
     };
+    var statusCounts = { pending: 0, admin_approved: 0, approved: 0, rejected: 0, revoked: 0, pending_renewal: 0 };
     var categories = {};
     var list = document.getElementById("report-category-breakdown");
 
@@ -357,12 +361,49 @@
       totals.totalRejected += row.status === "rejected" ? 1 : 0;
       totals.totalRenewals += Number(row.renewalCount || 0);
       categories[type.label] = (categories[type.label] || 0) + 1;
+      if (row.status in statusCounts) statusCounts[row.status]++;
     });
 
     document.getElementById("report-total-registrations").textContent = totals.totalRegistrations;
     document.getElementById("report-total-approved").textContent = totals.totalApproved;
     document.getElementById("report-total-rejected").textContent = totals.totalRejected;
     document.getElementById("report-total-renewals").textContent = totals.totalRenewals;
+
+    // Priority 4a: Status chart for DG
+    var canvas = document.getElementById("dg-status-chart");
+    if (canvas && typeof Chart !== "undefined") {
+      var chartData = {
+        labels: ["Pending Review", "Admin Approved", "Certified", "Rejected", "Revoked", "Pending Renewal"],
+        datasets: [{
+          data: [
+            statusCounts.pending,
+            statusCounts.admin_approved,
+            statusCounts.approved,
+            statusCounts.rejected,
+            statusCounts.revoked,
+            statusCounts.pending_renewal
+          ],
+          backgroundColor: ["#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#6b7280", "#8b5cf6"],
+          borderWidth: 2,
+          borderColor: "#fff"
+        }]
+      };
+      if (dgStatusChart) {
+        dgStatusChart.data = chartData;
+        dgStatusChart.update();
+      } else {
+        dgStatusChart = new Chart(canvas, {
+          type: "doughnut",
+          data: chartData,
+          options: {
+            plugins: {
+              legend: { position: "bottom", labels: { boxWidth: 12, padding: 10 } }
+            },
+            cutout: "60%"
+          }
+        });
+      }
+    }
 
     if (!Object.keys(categories).length) {
       list.innerHTML = '<li class="empty-state">No machinery records available yet.</li>';

@@ -1,4 +1,22 @@
 (function () {
+  // Reads the JWT from sessionStorage and returns the Authorization header value.
+  function getAuthHeader() {
+    try {
+      var session = JSON.parse(sessionStorage.getItem("cida_session") || "null");
+      return session && session.token ? "Bearer " + session.token : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function authHeaders(includeContentType) {
+    var h = {};
+    var token = getAuthHeader();
+    if (token) h["Authorization"] = token;
+    if (includeContentType) h["Content-Type"] = "application/json";
+    return h;
+  }
+
   var DB = {
     getData: async function (table, filters) {
       try {
@@ -6,7 +24,7 @@
         if (filters) {
           url += "?" + new URLSearchParams(filters).toString();
         }
-        var res = await fetch(url);
+        var res = await fetch(url, { headers: authHeaders(false) });
         var json = await res.json();
         return json.data || [];
       } catch (error) {
@@ -19,7 +37,7 @@
       try {
         var res = await fetch("/api/" + table, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(true),
           body: JSON.stringify(record),
         });
         var json = await res.json();
@@ -34,7 +52,7 @@
       try {
         var res = await fetch("/api/" + table + "/" + id, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(true),
           body: JSON.stringify(updatedFields),
         });
         var json = await res.json();
@@ -47,7 +65,7 @@
 
     findById: async function (table, id) {
       try {
-        var res = await fetch("/api/" + table + "/" + id);
+        var res = await fetch("/api/" + table + "/" + id, { headers: authHeaders(false) });
         var json = await res.json();
         return json.data || null;
       } catch (error) {
@@ -145,8 +163,8 @@
       return "approved";
     }
 
-    if (status === "pending" || status === "pending_renewal") {
-      return status;
+    if (status === "pending" || status === "pending_renewal" || status === "admin_approved") {
+      return "pending";
     }
 
     return status || "pending";
@@ -156,6 +174,7 @@
     var map = {
       approved: "status.approved",
       pending: "status.pending",
+      admin_approved: "status.adminApproved",
       pending_renewal: "status.pendingRenewal",
       rejected: "status.rejected",
       revoked: "status.revoked",

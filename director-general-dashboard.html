@@ -18,6 +18,11 @@
       <h1>Machinery Registration Review</h1>
     </div>
     <div class="topbar__actions">
+      <div class="lang-toggle">
+        <button class="button button--ghost lang-btn" data-lang="en">EN</button>
+        <button class="button button--ghost lang-btn" data-lang="si">සිං</button>
+        <button class="button button--ghost lang-btn" data-lang="ta">தமிழ்</button>
+      </div>
       <a class="button button--ghost" href="help.html">Help</a>
       <span id="director-general-user-summary" class="pill"></span>
       <button id="logout-button" class="button button--ghost" type="button">Logout</button>
@@ -165,6 +170,13 @@
       </div>
 
       <div class="report-grid">
+        <!-- Priority 4a: Applications by Status chart -->
+        <div>
+          <h3>Applications by Status</h3>
+          <div style="max-width:360px; margin:1rem auto;">
+            <canvas id="dg-status-chart" height="280"></canvas>
+          </div>
+        </div>
         <div>
           <h3>Machine Category Breakdown</h3>
           <ul id="report-category-breakdown" class="report-list"></ul>
@@ -184,8 +196,10 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="js/db.js"></script>
   <script src="js/migration.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/director-general.js"></script>
 </body>

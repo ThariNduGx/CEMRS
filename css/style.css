@@ -1265,3 +1265,42 @@ dialog.modal::backdrop {
   .help-diagram__arrow, .help-flow__arrow { transform: rotate(90deg); }
   dialog.modal { width: calc(100vw - 1rem); max-height: calc(100vh - 1rem); }
 }
+
+/* ── Language toggle (Priority 4c) ──────────────────────────────────────── */
+.lang-toggle {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+}
+.lang-toggle .lang-btn {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  letter-spacing: .03em;
+}
+.lang-toggle .lang-btn:hover,
+.lang-toggle .lang-btn.lang-btn--active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ── Report grid two-column layout ─────────────────────────────────────── */
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+@media (max-width: 768px) {
+  .report-grid { grid-template-columns: 1fr; }
+}

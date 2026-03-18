@@ -194,9 +194,13 @@
       .join("");
   }
 
+  var adminStatusChart = null;
+
   async function renderRegistrationSummary() {
     try {
-      var res = await fetch("/api/stats");
+      var session = JSON.parse(sessionStorage.getItem("cida_session") || "null");
+      var token = session && session.token ? session.token : "";
+      var res = await fetch("/api/stats", { headers: token ? { "Authorization": "Bearer " + token } : {} });
       var result = await res.json();
       if (!result.success) return;
       var s = result.data;
@@ -204,8 +208,77 @@
       document.getElementById("summary-total-approved").textContent = s.totalApproved;
       document.getElementById("summary-total-revoked").textContent = s.totalRevoked;
       document.getElementById("summary-total-owners").textContent = s.totalOwners;
+
+      // Priority 4a: Status doughnut chart
+      var canvas = document.getElementById("admin-status-chart");
+      if (canvas && typeof Chart !== "undefined") {
+        var chartData = {
+          labels: ["Pending Review", "Admin Approved", "Certified", "Rejected", "Revoked", "Pending Renewal"],
+          datasets: [{
+            data: [
+              s.totalPending || 0,
+              s.totalAdminApproved || 0,
+              s.totalApproved || 0,
+              s.totalRejected || 0,
+              s.totalRevoked || 0,
+              s.totalRenewal || 0
+            ],
+            backgroundColor: ["#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#6b7280", "#8b5cf6"],
+            borderWidth: 2,
+            borderColor: "#fff"
+          }]
+        };
+        if (adminStatusChart) {
+          adminStatusChart.data = chartData;
+          adminStatusChart.update();
+        } else {
+          adminStatusChart = new Chart(canvas, {
+            type: "doughnut",
+            data: chartData,
+            options: {
+              plugins: {
+                legend: { position: "bottom", labels: { boxWidth: 12, padding: 10 } }
+              },
+              cutout: "60%"
+            }
+          });
+        }
+      }
+
+      // Priority 4b: Expiring certificates
+      await renderExpiringCertificates();
     } catch (e) {
       console.error("Failed to load registration summary:", e);
+    }
+  }
+
+  // Priority 4b: List machines expiring within 30 days
+  async function renderExpiringCertificates() {
+    var list = document.getElementById("admin-expiring-list");
+    if (!list) return;
+
+    try {
+      var expiring = await CIDA_DB.getData("machinery/expiring");
+      if (!expiring.length) {
+        list.innerHTML = '<li style="color: var(--text-muted); font-size:.9rem;">No certificates expiring in the next 30 days.</li>';
+        return;
+      }
+
+      var users = await CIDA_DB.getData("users");
+      var usersMap = users.reduce(function (acc, u) { acc[u.id] = u; return acc; }, {});
+
+      list.innerHTML = expiring.map(function (m) {
+        var owner = usersMap[m.ownerId] || { name: "Unknown" };
+        var daysLeft = Math.ceil((m.expiryDate - Date.now()) / DAY);
+        var tone = daysLeft <= 7 ? "color: var(--danger);" : "color: var(--warning);";
+        return "<li style='display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);'>" +
+          "<span><strong>" + CIDA_UTILS.escapeHtml(m.registrationNumber || "-") + "</strong> &mdash; " +
+          CIDA_UTILS.escapeHtml(owner.name) + "<br><span class='muted' style='font-size:.8rem'>" +
+          CIDA_UTILS.escapeHtml(CIDA_UTILS.getMachineryTypeDetails(m.type).label + " / " + m.makeModel) + "</span></span>" +
+          "<span style='font-weight:600;font-size:.85rem;" + tone + "'>" + daysLeft + " day" + (daysLeft === 1 ? "" : "s") + " left</span></li>";
+      }).join("");
+    } catch (e) {
+      list.innerHTML = '<li class="muted">Unable to load expiring certificates.</li>';
     }
   }
 
@@ -213,6 +286,84 @@
     var records = await getMaintenanceRecords();
     renderAlerts(records);
     await renderRegistrationSummary();
+  }
+
+  // ─── Priority 3: Admin Machinery Review Queue ─────────────────────────────
+
+  async function loadPendingMachinery() {
+    var tbody = document.getElementById("admin-pending-machinery-body");
+    var feedback = document.getElementById("admin-machinery-feedback");
+    if (!tbody) return;
+
+    try {
+      var machinery = await CIDA_DB.getData("machinery");
+      var pendingItems = machinery.filter(function (m) { return m.status === "pending"; });
+
+      if (!pendingItems.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center;">No pending applications awaiting review.</td></tr>';
+        return;
+      }
+
+      var users = await CIDA_DB.getData("users");
+      var usersMap = users.reduce(function (acc, u) { acc[u.id] = u; return acc; }, {});
+
+      tbody.innerHTML = pendingItems.map(function (m) {
+        var owner = usersMap[m.ownerId] || { name: "Unknown", address: "-" };
+        var type = CIDA_UTILS.getMachineryTypeDetails(m.type);
+        var docButtons = CIDA_CONSTANTS.documentTypes
+          .filter(function (d) { return m.documents && m.documents[d.key]; })
+          .map(function (d) {
+            return '<span class="muted" style="font-size:.8rem;">&#128196; ' + CIDA_UTILS.escapeHtml(CIDA_UTILS.getDocumentLabel(d.key)) + "</span>";
+          }).join("<br>");
+
+        return "<tr>" +
+          "<td><strong>" + CIDA_UTILS.escapeHtml(owner.name) + "</strong><br><span class='muted' style='font-size:.8rem'>" + CIDA_UTILS.escapeHtml(owner.address || "-") + "</span></td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(type.label + " (" + type.code + ")") + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(m.makeModel) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(m.location) + "</td>" +
+          "<td style='line-height:1.8'>" + (docButtons || '<span class="muted">None</span>') + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(CIDA_UTILS.formatDate(m.submittedAt)) + "</td>" +
+          '<td><div class="action-row">' +
+          '<button class="button button--primary js-admin-approve" data-id="' + CIDA_UTILS.escapeHtml(m.id) + '">Forward to DG</button>' +
+          '<button class="button button--ghost js-admin-reject" data-id="' + CIDA_UTILS.escapeHtml(m.id) + '">Reject</button>' +
+          "</div></td></tr>";
+      }).join("");
+
+      tbody.querySelectorAll(".js-admin-approve").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          await adminReviewMachinery(this.dataset.id, "admin_approved", null, feedback);
+        });
+      });
+
+      tbody.querySelectorAll(".js-admin-reject").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          var reason = window.prompt("Enter reason for rejection:");
+          if (!reason) return;
+          await adminReviewMachinery(this.dataset.id, "rejected", reason, feedback);
+        });
+      });
+    } catch (e) {
+      console.error(e);
+      CIDA_UTILS.setFeedback(feedback, "Failed to load applications.", "error");
+    }
+  }
+
+  async function adminReviewMachinery(id, status, rejectionReason, feedbackEl) {
+    CIDA_UTILS.setFeedback(feedbackEl, "Updating...", "info");
+    var update = { status: status };
+    if (rejectionReason) update.rejectionReason = rejectionReason;
+
+    var result = await CIDA_DB.update("machinery", id, update);
+    if (result) {
+      var msg = status === "admin_approved"
+        ? "Application forwarded to Director General for certification."
+        : "Application rejected.";
+      CIDA_UTILS.setFeedback(feedbackEl, msg, "success");
+      await loadPendingMachinery();
+      await renderRegistrationSummary();
+    } else {
+      CIDA_UTILS.setFeedback(feedbackEl, "Failed to update application.", "error");
+    }
   }
 
   function wireAdminReportForm() {
@@ -465,6 +616,9 @@
           panel.style.display = panel.id === targetId ? "" : "none";
         });
 
+        if (targetId === "pending-machinery-section") {
+          loadPendingMachinery();
+        }
         if (targetId === "contractors-management-section") {
           loadContractors();
         }

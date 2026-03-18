@@ -15,6 +15,10 @@
     sessionStorage.setItem("cida_session", JSON.stringify(session));
   }
 
+  function setSessionFromLogin(data, token) {
+    setSession({ userId: data.id, role: data.role, token: token });
+  }
+
   function clearSession() {
     sessionStorage.removeItem("cida_session");
   }
@@ -33,6 +37,7 @@
       admin: "admin-dashboard.html",
       director_general: "director-general-dashboard.html",
       owner: "owner-dashboard.html",
+      contractor: "contractor-dashboard.html",
     };
 
     window.location.href = routeMap[role] || "login.html";
@@ -40,8 +45,9 @@
 
   async function requireRole(role) {
     var session = getSession();
+    var loginPage = role === "contractor" ? "contractor-login.html" : "login.html";
     if (!session || session.role !== role) {
-      window.location.href = "login.html";
+      window.location.href = loginPage;
       return null;
     }
 
@@ -86,7 +92,7 @@
           return;
         }
 
-        setSession({ userId: result.data.id, role: result.data.role });
+        setSession({ userId: result.data.id, role: result.data.role, token: result.token });
         CIDA_UTILS.setFeedback(feedback, getText("feedback.loginSuccess", "Login successful. Redirecting..."), "success");
         redirectForRole(result.data.role);
       } catch (err) {
@@ -149,7 +155,7 @@
         }
 
         form.reset();
-        setSession({ userId: result.data.id, role: result.data.role });
+        setSession({ userId: result.data.id, role: result.data.role, token: result.token });
         CIDA_UTILS.setFeedback(feedback, getText("feedback.accountCreated", "Account created. Redirecting to owner dashboard..."), "success");
         redirectForRole("owner");
       } catch (err) {
@@ -210,6 +216,7 @@
 
   window.CIDA_AUTH = {
     getSession: getSession,
+    setSession: setSession,
     getCurrentUser: getCurrentUser,
     clearSession: clearSession,
     requireRole: requireRole,

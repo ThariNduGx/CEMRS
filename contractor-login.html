@@ -42,6 +42,7 @@
 
   <script src="js/db.js"></script>
   <script src="js/migration.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/auth.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -71,14 +72,13 @@
                 
                 if(result.success) {
                     CIDA_UTILS.setFeedback(feedback, result.message, "success");
-                    // Save to local session to match app's existing flow
-                    sessionStorage.setItem("cida_session", JSON.stringify({
+                    // Store JWT token + userId (users.id) + contractorId for API calls
+                    CIDA_AUTH.setSession({
                         userId: result.user.id,
                         role: result.user.role,
-                        email: result.user.email,
-                        name: result.user.full_name,
-                        company_name: result.user.company_name
-                    }));
+                        token: result.token,
+                        contractorId: result.user.contractorId
+                    });
                     window.location.href = 'contractor-dashboard.html';
                 } else {
                     CIDA_UTILS.setFeedback(feedback, result.message, "error");
