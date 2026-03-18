@@ -365,6 +365,90 @@
     }
   }
 
+  async function loadAdminRentals() {
+    var tbody = document.getElementById("admin-rentals-body");
+    var feedback = document.getElementById("admin-rental-feedback");
+    if (!tbody) return;
+
+    try {
+      var response = await fetch("api/rentals.php");
+      var result = await response.json();
+
+      if (!result.success) {
+        CIDA_UTILS.setFeedback(feedback, "Failed to load rentals: " + result.message, "error");
+        return;
+      }
+
+      if (!result.rentals.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;">No rental requests yet.</td></tr>';
+        return;
+      }
+
+      var machines = await CIDA_DB.getData("machinery");
+      var machineMap = machines.reduce(function (acc, m) { acc[m.id] = m; return acc; }, {});
+
+      tbody.innerHTML = result.rentals.map(function (r) {
+        var machine = machineMap[r.machine_id] || {};
+        var typeLabel = machine.type ? CIDA_UTILS.getMachineryTypeDetails(machine.type).label : "-";
+        var regNo = machine.registrationNumber || r.machine_id;
+        var statusTone = r.status === "approved" ? "approved" : r.status === "rejected" ? "rejected" : r.status === "completed" ? "approved" : "pending";
+        var actions = "";
+
+        if (r.status === "requested") {
+          actions =
+            '<button class="button button--primary js-rental-approve" data-id="' + r.id + '">Approve</button>' +
+            '<button class="button button--ghost js-rental-reject" data-id="' + r.id + '">Reject</button>';
+        } else if (r.status === "approved") {
+          actions = '<button class="button button--ghost js-rental-complete" data-id="' + r.id + '">Mark Completed</button>';
+        }
+
+        return (
+          "<tr>" +
+          "<td>" + CIDA_UTILS.escapeHtml(r.full_name || "-") + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(r.company_name || "-") + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(typeLabel + " — " + regNo) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(r.start_date + " to " + r.end_date) + "</td>" +
+          '<td><span class="badge badge--' + statusTone + '">' + CIDA_UTILS.escapeHtml(r.status.charAt(0).toUpperCase() + r.status.slice(1)) + "</span></td>" +
+          '<td><div class="action-row">' + actions + "</div></td>" +
+          "</tr>"
+        );
+      }).join("");
+
+      tbody.querySelectorAll(".js-rental-approve").forEach(function (btn) {
+        btn.addEventListener("click", function () { updateRentalStatus(this.dataset.id, "approved", feedback); });
+      });
+      tbody.querySelectorAll(".js-rental-reject").forEach(function (btn) {
+        btn.addEventListener("click", function () { updateRentalStatus(this.dataset.id, "rejected", feedback); });
+      });
+      tbody.querySelectorAll(".js-rental-complete").forEach(function (btn) {
+        btn.addEventListener("click", function () { updateRentalStatus(this.dataset.id, "completed", feedback); });
+      });
+    } catch (e) {
+      console.error(e);
+      CIDA_UTILS.setFeedback(feedback, "Network error loading rentals.", "error");
+    }
+  }
+
+  async function updateRentalStatus(id, status, feedbackEl) {
+    CIDA_UTILS.setFeedback(feedbackEl, "Updating...", "info");
+    try {
+      var response = await fetch("api/rentals/" + id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: status })
+      });
+      var result = await response.json();
+      if (result.success) {
+        CIDA_UTILS.setFeedback(feedbackEl, result.message, "success");
+        loadAdminRentals();
+      } else {
+        CIDA_UTILS.setFeedback(feedbackEl, result.message, "error");
+      }
+    } catch (e) {
+      CIDA_UTILS.setFeedback(feedbackEl, "Failed to update rental.", "error");
+    }
+  }
+
   function wireNavigation() {
     var navLinks = document.querySelectorAll(".workspace-nav a");
     var panels = document.querySelectorAll(".workspace-main > section");
@@ -386,6 +470,9 @@
         }
         if (targetId === "registration-summary-section") {
           renderRegistrationSummary();
+        }
+        if (targetId === "rental-requests-section") {
+          loadAdminRentals();
         }
       });
     });
