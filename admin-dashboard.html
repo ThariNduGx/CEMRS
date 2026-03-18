@@ -16,6 +16,11 @@
       <h1>Admin Dashboard</h1>
     </div>
     <div class="topbar__actions">
+      <div class="lang-toggle">
+        <button class="button button--ghost lang-btn" data-lang="en">EN</button>
+        <button class="button button--ghost lang-btn" data-lang="si">සිං</button>
+        <button class="button button--ghost lang-btn" data-lang="ta">தமிழ்</button>
+      </div>
       <div class="dropdown-wrapper">
         <button id="notification-button" class="button button--ghost icon-button" type="button" aria-label="Notifications">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -42,6 +47,7 @@
       <p class="eyebrow">Admin</p>
       <a href="#admin-report-section">Submit Report</a>
       <a href="#registration-summary-section">Registration Summary</a>
+      <a href="#pending-machinery-section">Machinery Review</a>
       <a href="#contractors-management-section">Contractor Management</a>
       <a href="#rental-requests-section">Rental Requests</a>
       <a href="#maintenance-settings-section">Settings</a>
@@ -101,6 +107,36 @@
         <div id="admin-report-feedback" class="feedback" aria-live="polite"></div>
       </section>
 
+      <!-- Pending Machinery Applications — Priority 3 -->
+      <section id="pending-machinery-section" class="panel" style="display: none;">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Machinery Review</p>
+            <h2>Pending Applications</h2>
+          </div>
+        </div>
+        <p class="muted" style="margin-bottom:1rem;">Review submitted applications. Approved items are forwarded to the Director General for final certification.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Owner</th>
+                <th>Type</th>
+                <th>Model</th>
+                <th>Location</th>
+                <th>Documents</th>
+                <th>Submitted</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-pending-machinery-body">
+              <tr><td colspan="7" class="muted" style="text-align:center;">Loading applications...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="admin-machinery-feedback" class="feedback"></div>
+      </section>
+
       <!-- Registration Summary -->
       <section id="registration-summary-section" class="panel">
         <div class="section-head">
@@ -127,6 +163,22 @@
             <span>Registered Owners</span>
             <strong id="summary-total-owners">0</strong>
           </article>
+        </div>
+
+        <!-- Priority 4a: Applications by Status chart -->
+        <div class="report-grid" style="margin-top:2rem;">
+          <div>
+            <h3>Applications by Status</h3>
+            <div style="max-width:380px; margin:1rem auto;">
+              <canvas id="admin-status-chart" height="280"></canvas>
+            </div>
+          </div>
+
+          <!-- Priority 4b: Expiring Certificates panel -->
+          <div>
+            <h3>Certificates Expiring Within 30 Days</h3>
+            <ul id="admin-expiring-list" class="report-list" style="margin-top:1rem;"></ul>
+          </div>
         </div>
       </section>
 
@@ -211,8 +263,10 @@
     </div>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="js/db.js"></script>
   <script src="js/migration.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
 </body>

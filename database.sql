@@ -1,6 +1,7 @@
 -- ============================================================
 -- CEMRS - Construction Equipment & Machinery Registration System
 -- MySQL Setup Script for XAMPP
+-- Updated: Priority 5 — ENUM status, FK constraints, contractor specialization
 -- ============================================================
 -- HOW TO USE:
 --   1. Open XAMPP Control Panel and start Apache + MySQL
@@ -14,12 +15,34 @@ CREATE DATABASE IF NOT EXISTS `cida_machinery` CHARACTER SET utf8mb4 COLLATE utf
 USE `cida_machinery`;
 
 -- ----------------------------------------------------------
+-- Table: users
+-- Central user table. Stores all roles including contractors.
+-- Contractors are a specialization of this entity (Priority 2).
+-- Passwords are bcrypt-hashed. Demo seed data is inserted by
+-- the Node server on first startup if the table is empty.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `users` (
+  `id`              VARCHAR(50)   NOT NULL,
+  `name`            VARCHAR(100)  NOT NULL,
+  `company_name`    VARCHAR(150)  DEFAULT NULL,
+  `email`           VARCHAR(150)  NOT NULL UNIQUE,
+  `password`        VARCHAR(255)  NOT NULL,
+  `role`            ENUM('admin', 'director_general', 'owner', 'contractor') NOT NULL,
+  `contact_details` VARCHAR(50)   DEFAULT '',
+  `address`         TEXT          DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ----------------------------------------------------------
 -- Table: contractors
--- Stores contractor registrations. Accounts start as 'pending'
--- and must be approved by a CIDA admin before login is allowed.
+-- Extended profile for users with role='contractor'.
+-- user_id is a FK to users(id) — Priority 2 specialization.
+-- Accounts start as 'pending' and must be approved by a CIDA
+-- admin before the contractor can log in.
 -- ----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `contractors` (
   `id`              INT(11)       NOT NULL AUTO_INCREMENT,
+  `user_id`         VARCHAR(50)   DEFAULT NULL,
   `full_name`       VARCHAR(100)  NOT NULL,
   `company_name`    VARCHAR(150)  NOT NULL,
   `cida_number`     VARCHAR(50)   NOT NULL,
@@ -28,13 +51,14 @@ CREATE TABLE IF NOT EXISTS `contractors` (
   `contact_details` VARCHAR(50)   NOT NULL,
   `status`          ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
   `created_at`      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ----------------------------------------------------------
 -- Table: rentals
--- Stores rental requests submitted by approved contractors.
--- machine_id references the equipment ID stored in the app.
+-- Rental requests submitted by approved contractors.
+-- machine_id references a machinery.id value.
 -- ----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `rentals` (
   `id`            INT(11)      NOT NULL AUTO_INCREMENT,
@@ -49,27 +73,11 @@ CREATE TABLE IF NOT EXISTS `rentals` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ----------------------------------------------------------
--- Table: users
--- Stores CIDA admin, director general, and equipment owner accounts.
--- Passwords are bcrypt-hashed. Demo seed data is inserted by the
--- Node server on first startup if the table is empty.
--- ----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `users` (
-  `id`              VARCHAR(50)   NOT NULL,
-  `name`            VARCHAR(100)  NOT NULL,
-  `company_name`    VARCHAR(150)  DEFAULT NULL,
-  `email`           VARCHAR(150)  NOT NULL UNIQUE,
-  `password`        VARCHAR(255)  NOT NULL,
-  `role`            ENUM('admin', 'director_general', 'owner') NOT NULL,
-  `contact_details` VARCHAR(50)   DEFAULT '',
-  `address`         TEXT          DEFAULT '',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ----------------------------------------------------------
 -- Table: machinery
--- Stores equipment registration applications and their lifecycle
--- (pending → approved / rejected / revoked, renewal, appeals).
+-- Equipment registration lifecycle.
+-- status uses ENUM (Priority 5) — admin_approved is the
+-- intermediate state after Admin review and before DG
+-- certification (Priority 3 two-step workflow).
 -- documents and appeal are stored as JSON.
 -- ----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `machinery` (
@@ -79,7 +87,7 @@ CREATE TABLE IF NOT EXISTS `machinery` (
   `make_model`           VARCHAR(150)  NOT NULL,
   `country_of_origin`    VARCHAR(100)  DEFAULT '',
   `location`             VARCHAR(150)  DEFAULT '',
-  `status`               VARCHAR(30)   DEFAULT 'pending',
+  `status`               ENUM('pending','admin_approved','approved','rejected','revoked','pending_renewal') DEFAULT 'pending',
   `registration_number`  VARCHAR(50)   DEFAULT NULL,
   `registration_date`    BIGINT        DEFAULT NULL,
   `expiry_date`          BIGINT        DEFAULT NULL,
@@ -97,7 +105,8 @@ CREATE TABLE IF NOT EXISTS `machinery` (
 
 -- ----------------------------------------------------------
 -- Table: maintenance
--- Stores equipment maintenance records logged by the admin.
+-- Equipment maintenance records.
+-- owner_id has a proper FK constraint (Priority 5).
 -- documents is stored as JSON.
 -- ----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `maintenance` (
@@ -112,5 +121,6 @@ CREATE TABLE IF NOT EXISTS `maintenance` (
   `site`             VARCHAR(150)  DEFAULT '',
   `documents`        JSON          DEFAULT NULL,
   `created_at`       BIGINT        DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`owner_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

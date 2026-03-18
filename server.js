@@ -1,12 +1,14 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const path = require('path');
 const cors = require('cors');
 
 const app = express();
 const PORT = 8000;
 const DAY = 1000 * 60 * 60 * 24;
+const JWT_SECRET = process.env.JWT_SECRET || 'cida-cemrs-jwt-secret-2026';
 
 app.use(cors());
 app.use(express.json());
@@ -16,13 +18,37 @@ app.use(express.static(path.join(__dirname)));
 const pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: '',           // XAMPP default: empty password
+    password: '',
     database: 'cida_machinery',
     waitForConnections: true,
     connectionLimit: 10
 });
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Auth middleware ──────────────────────────────────────────────────────────
+
+function authenticate(req, res, next) {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+    try {
+        req.user = jwt.verify(auth.slice(7), JWT_SECRET);
+        next();
+    } catch (e) {
+        return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
+    }
+}
+
+function authorize(...roles) {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, message: 'Access denied: insufficient permissions.' });
+        }
+        next();
+    };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseJson(value) {
     if (value === null || value === undefined) return null;
@@ -135,7 +161,7 @@ function buildPatchQuery(table, fieldMap, updates) {
     return { setClauses, params };
 }
 
-// ─── Seed data ───────────────────────────────────────────────────────────────
+// ─── Seed data ────────────────────────────────────────────────────────────────
 
 async function seedDatabase(conn) {
     const [[{ count }]] = await conn.execute('SELECT COUNT(*) AS count FROM users');
@@ -145,17 +171,17 @@ async function seedDatabase(conn) {
     const now = Date.now();
 
     const seedUsers = [
-        { id: 'u_admin_001',  name: 'Maintenance Administrator', companyName: null,                      email: 'admin@cida.gov.lk',   password: 'Admin@123',     role: 'admin',            contactDetails: '0112345678', address: 'CIDA Headquarters, Colombo 07' },
-        { id: 'u_dg_001',     name: 'Director General',          companyName: null,                      email: 'dg@cida.gov.lk',      password: 'Director@123',  role: 'director_general', contactDetails: '0112456789', address: 'CIDA Headquarters, Colombo 07' },
-        { id: 'u_owner_001',  name: 'Kamal Perera',              companyName: 'Perera Earth Movers',     email: 'owner@test.com',      password: 'Owner@123',     role: 'owner',            contactDetails: '0771234567', address: '14 Lake Road, Colombo 03' },
-        { id: 'u_owner_002',  name: 'Nadeesha Fernando',         companyName: 'Fernando Heavy Works',    email: 'nadeesha@test.com',   password: 'Owner@123',     role: 'owner',            contactDetails: '0772345678', address: '118 Negombo Road, Wattala' },
-        { id: 'u_owner_003',  name: 'Ishan Silva',               companyName: 'Silva Civil Equipment',   email: 'ishan@test.com',      password: 'Owner@123',     role: 'owner',            contactDetails: '0773456789', address: '42 Kandy Road, Kadawatha' },
-        { id: 'u_owner_004',  name: 'Malsha Jayawardena',        companyName: 'Jayawardena Infra Rentals', email: 'malsha@test.com',   password: 'Owner@123',     role: 'owner',            contactDetails: '0774567890', address: '22 Temple Street, Galle' },
-        { id: 'u_owner_005',  name: 'Ruwan Wijesinghe',          companyName: 'Ruwan Construction Plant', email: 'ruwan@test.com',     password: 'Owner@123',     role: 'owner',            contactDetails: '0775678901', address: '7 Kurunegala Road, Dambulla' },
-        { id: 'u_owner_006',  name: 'Dinithi Gunasekara',        companyName: 'DG Road Tech',            email: 'dinithi@test.com',    password: 'Owner@123',     role: 'owner',            contactDetails: '0776789012', address: '85 Matara Road, Matara' },
-        { id: 'u_owner_007',  name: 'Tharindu Ranatunga',        companyName: 'Ranatunga Aggregates',    email: 'tharindu@test.com',   password: 'Owner@123',     role: 'owner',            contactDetails: '0777890123', address: '56 Main Street, Anuradhapura' },
-        { id: 'u_owner_008',  name: 'Sahan de Alwis',            companyName: 'SDA Plant Hire',          email: 'sahan@test.com',      password: 'Owner@123',     role: 'owner',            contactDetails: '0778901234', address: '91 Galle Road, Kalutara' },
-        { id: 'u_owner_009',  name: 'Ayesha Samarasinghe',       companyName: 'Ayesha Build Systems',    email: 'ayesha@test.com',     password: 'Owner@123',     role: 'owner',            contactDetails: '0779012345', address: '34 New Town, Ratnapura' },
+        { id: 'u_admin_001',  name: 'Maintenance Administrator', companyName: null,                        email: 'admin@cida.gov.lk',   password: 'Admin@123',     role: 'admin',            contactDetails: '0112345678', address: 'CIDA Headquarters, Colombo 07' },
+        { id: 'u_dg_001',     name: 'Director General',          companyName: null,                        email: 'dg@cida.gov.lk',      password: 'Director@123',  role: 'director_general', contactDetails: '0112456789', address: 'CIDA Headquarters, Colombo 07' },
+        { id: 'u_owner_001',  name: 'Kamal Perera',              companyName: 'Perera Earth Movers',       email: 'owner@test.com',      password: 'Owner@123',     role: 'owner',            contactDetails: '0771234567', address: '14 Lake Road, Colombo 03' },
+        { id: 'u_owner_002',  name: 'Nadeesha Fernando',         companyName: 'Fernando Heavy Works',      email: 'nadeesha@test.com',   password: 'Owner@123',     role: 'owner',            contactDetails: '0772345678', address: '118 Negombo Road, Wattala' },
+        { id: 'u_owner_003',  name: 'Ishan Silva',               companyName: 'Silva Civil Equipment',     email: 'ishan@test.com',      password: 'Owner@123',     role: 'owner',            contactDetails: '0773456789', address: '42 Kandy Road, Kadawatha' },
+        { id: 'u_owner_004',  name: 'Malsha Jayawardena',        companyName: 'Jayawardena Infra Rentals', email: 'malsha@test.com',     password: 'Owner@123',     role: 'owner',            contactDetails: '0774567890', address: '22 Temple Street, Galle' },
+        { id: 'u_owner_005',  name: 'Ruwan Wijesinghe',          companyName: 'Ruwan Construction Plant',  email: 'ruwan@test.com',      password: 'Owner@123',     role: 'owner',            contactDetails: '0775678901', address: '7 Kurunegala Road, Dambulla' },
+        { id: 'u_owner_006',  name: 'Dinithi Gunasekara',        companyName: 'DG Road Tech',              email: 'dinithi@test.com',    password: 'Owner@123',     role: 'owner',            contactDetails: '0776789012', address: '85 Matara Road, Matara' },
+        { id: 'u_owner_007',  name: 'Tharindu Ranatunga',        companyName: 'Ranatunga Aggregates',      email: 'tharindu@test.com',   password: 'Owner@123',     role: 'owner',            contactDetails: '0777890123', address: '56 Main Street, Anuradhapura' },
+        { id: 'u_owner_008',  name: 'Sahan de Alwis',            companyName: 'SDA Plant Hire',            email: 'sahan@test.com',      password: 'Owner@123',     role: 'owner',            contactDetails: '0778901234', address: '91 Galle Road, Kalutara' },
+        { id: 'u_owner_009',  name: 'Ayesha Samarasinghe',       companyName: 'Ayesha Build Systems',      email: 'ayesha@test.com',     password: 'Owner@123',     role: 'owner',            contactDetails: '0779012345', address: '34 New Town, Ratnapura' },
     ];
 
     for (const u of seedUsers) {
@@ -167,16 +193,18 @@ async function seedDatabase(conn) {
     }
 
     const seedMachinery = [
-        { id: 'm_001', ownerId: 'u_owner_001', type: 'WL',  makeModel: 'Caterpillar 950M',     countryOfOrigin: 'USA',     location: 'Colombo 03',    status: 'approved',        registrationNumber: 'CIDA-WL-2026-001',  registrationDate: now - DAY*340, expiryDate: now + DAY*25,  rejectionReason: '', feeAtSubmission: 1000, renewalCount: 1, renewalRequestedAt: null, certificateIssuedAt: now - DAY*340, submittedAt: now - DAY*350, documents: { revenueLicense: 'revenue-license-950m.pdf', motorTrafficCertificate: 'motor-traffic-950m.pdf', affidavit: 'owner-affidavit.pdf', engineerReport: 'engineer-report-950m.pdf' }, appeal: null },
-        { id: 'm_002', ownerId: 'u_owner_001', type: 'EX',  makeModel: 'Komatsu PC210',        countryOfOrigin: 'Japan',   location: 'Gampaha',       status: 'pending',         registrationNumber: null,                registrationDate: null,          expiryDate: null,          rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: null,          submittedAt: now - DAY*2,   documents: { revenueLicense: 'komatsu-license.pdf', motorTrafficCertificate: 'komatsu-traffic.pdf', affidavit: 'komatsu-affidavit.pdf', engineerReport: 'komatsu-engineer-report.pdf' }, appeal: null },
-        { id: 'm_003', ownerId: 'u_owner_001', type: 'RLR', makeModel: 'Dynapac CA250',        countryOfOrigin: 'Sweden',  location: 'Kurunegala',    status: 'revoked',         registrationNumber: 'CIDA-RLR-2025-014', registrationDate: now - DAY*420, expiryDate: now - DAY*54,  rejectionReason: 'Certificate revoked due to repeated compliance breaches.', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: now - DAY*420, submittedAt: now - DAY*430, documents: { revenueLicense: 'dynapac-license.pdf', motorTrafficCertificate: 'dynapac-traffic.pdf', affidavit: 'dynapac-affidavit.pdf', engineerReport: 'dynapac-engineer.pdf' }, appeal: null },
-        { id: 'm_004', ownerId: 'u_owner_002', type: 'BHL', makeModel: 'JCB 3CX',             countryOfOrigin: 'UK',      location: 'Wattala',       status: 'approved',        registrationNumber: 'CIDA-BHL-2026-002', registrationDate: now - DAY*180, expiryDate: now + DAY*185, rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: now - DAY*180, submittedAt: now - DAY*188, documents: { revenueLicense: 'jcb-license.pdf', motorTrafficCertificate: 'jcb-traffic.pdf', affidavit: 'jcb-affidavit.pdf', engineerReport: 'jcb-engineer.pdf' }, appeal: null },
-        { id: 'm_005', ownerId: 'u_owner_003', type: 'CRN', makeModel: 'Kobelco CKE900',      countryOfOrigin: 'Japan',   location: 'Kadawatha',     status: 'rejected',        registrationNumber: null,                registrationDate: null,          expiryDate: null,          rejectionReason: 'Supporting documents were incomplete at the time of review.', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: null, submittedAt: now - DAY*6, documents: { revenueLicense: 'kobelco-license.pdf', motorTrafficCertificate: 'kobelco-traffic.pdf', affidavit: 'kobelco-affidavit.pdf', engineerReport: 'kobelco-engineer.pdf' }, appeal: { status: 'submitted', message: 'Updated engineer report has been attached for reconsideration.', submittedAt: now - DAY*1, reviewedAt: null, adminNotes: '' } },
-        { id: 'm_006', ownerId: 'u_owner_004', type: 'CNM', makeModel: 'SANY SY306C-8',       countryOfOrigin: 'China',   location: 'Galle',         status: 'approved',        registrationNumber: 'CIDA-CNM-2026-003', registrationDate: now - DAY*120, expiryDate: now + DAY*245, rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: now - DAY*120, submittedAt: now - DAY*127, documents: { revenueLicense: 'sany-license.pdf', motorTrafficCertificate: 'sany-traffic.pdf', affidavit: 'sany-affidavit.pdf', engineerReport: 'sany-engineer.pdf' }, appeal: null },
-        { id: 'm_007', ownerId: 'u_owner_005', type: 'DMP', makeModel: 'Isuzu CXZ Dump Truck',countryOfOrigin: 'Japan',   location: 'Dambulla',      status: 'pending_renewal', registrationNumber: 'CIDA-DMP-2025-021', registrationDate: now - DAY*353, expiryDate: now + DAY*12,  rejectionReason: '', feeAtSubmission: 1000, renewalCount: 1, renewalRequestedAt: now - DAY*2, certificateIssuedAt: now - DAY*353, submittedAt: now - DAY*361, documents: { revenueLicense: 'isuzu-license.pdf', motorTrafficCertificate: 'isuzu-traffic.pdf', affidavit: 'isuzu-affidavit.pdf', engineerReport: 'isuzu-engineer.pdf' }, appeal: null },
-        { id: 'm_008', ownerId: 'u_owner_006', type: 'MG',  makeModel: 'Caterpillar 140K',    countryOfOrigin: 'USA',     location: 'Matara',        status: 'rejected',        registrationNumber: null,                registrationDate: null,          expiryDate: null,          rejectionReason: 'Inspection identified unsafe braking components.', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: null, submittedAt: now - DAY*28, documents: { revenueLicense: 'grader-license.pdf', motorTrafficCertificate: 'grader-traffic.pdf', affidavit: 'grader-affidavit.pdf', engineerReport: 'grader-engineer.pdf' }, appeal: { status: 'dismissed', message: 'Repair work was completed after the first inspection.', submittedAt: now - DAY*20, reviewedAt: now - DAY*16, adminNotes: 'Appeal dismissed until a fresh inspection report is provided.' } },
-        { id: 'm_009', ownerId: 'u_owner_007', type: 'PIL', makeModel: 'Bauer BG 28',         countryOfOrigin: 'Germany', location: 'Anuradhapura',  status: 'approved',        registrationNumber: 'CIDA-PIL-2026-004', registrationDate: now - DAY*351, expiryDate: now + DAY*14,  rejectionReason: '', feeAtSubmission: 1000, renewalCount: 2, renewalRequestedAt: null, certificateIssuedAt: now - DAY*351, submittedAt: now - DAY*360, documents: { revenueLicense: 'bauer-license.pdf', motorTrafficCertificate: 'bauer-traffic.pdf', affidavit: 'bauer-affidavit.pdf', engineerReport: 'bauer-engineer.pdf' }, appeal: null },
-        { id: 'm_010', ownerId: 'u_owner_008', type: 'CPM', makeModel: 'Schwing SP 2800',     countryOfOrigin: 'Germany', location: 'Kalutara',      status: 'approved',        registrationNumber: 'CIDA-CPM-2026-005', registrationDate: now - DAY*90,  expiryDate: now + DAY*275, rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: now - DAY*90,  submittedAt: now - DAY*97,  documents: { revenueLicense: 'schwing-license.pdf', motorTrafficCertificate: 'schwing-traffic.pdf', affidavit: 'schwing-affidavit.pdf', engineerReport: 'schwing-engineer.pdf' }, appeal: null },
+        { id: 'm_001', ownerId: 'u_owner_001', type: 'WL',  makeModel: 'Caterpillar 950M',      countryOfOrigin: 'USA',     location: 'Colombo 03',    status: 'approved',        registrationNumber: 'CIDA-WL-2026-001',  registrationDate: now - DAY*340, expiryDate: now + DAY*25,  rejectionReason: '', feeAtSubmission: 1000, renewalCount: 1, renewalRequestedAt: null, certificateIssuedAt: now - DAY*340, submittedAt: now - DAY*350, documents: { revenueLicense: 'revenue-license-950m.pdf', motorTrafficCertificate: 'motor-traffic-950m.pdf', affidavit: 'owner-affidavit.pdf', engineerReport: 'engineer-report-950m.pdf' }, appeal: null },
+        { id: 'm_002', ownerId: 'u_owner_001', type: 'EX',  makeModel: 'Komatsu PC210',         countryOfOrigin: 'Japan',   location: 'Gampaha',       status: 'pending',         registrationNumber: null,                registrationDate: null,          expiryDate: null,          rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: null,          submittedAt: now - DAY*2,   documents: { revenueLicense: 'komatsu-license.pdf', motorTrafficCertificate: 'komatsu-traffic.pdf', affidavit: 'komatsu-affidavit.pdf', engineerReport: 'komatsu-engineer-report.pdf' }, appeal: null },
+        { id: 'm_003', ownerId: 'u_owner_001', type: 'RLR', makeModel: 'Dynapac CA250',         countryOfOrigin: 'Sweden',  location: 'Kurunegala',    status: 'revoked',         registrationNumber: 'CIDA-RLR-2025-014', registrationDate: now - DAY*420, expiryDate: now - DAY*54,  rejectionReason: 'Certificate revoked due to repeated compliance breaches.', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: now - DAY*420, submittedAt: now - DAY*430, documents: { revenueLicense: 'dynapac-license.pdf', motorTrafficCertificate: 'dynapac-traffic.pdf', affidavit: 'dynapac-affidavit.pdf', engineerReport: 'dynapac-engineer.pdf' }, appeal: null },
+        { id: 'm_004', ownerId: 'u_owner_002', type: 'BHL', makeModel: 'JCB 3CX',              countryOfOrigin: 'UK',      location: 'Wattala',       status: 'approved',        registrationNumber: 'CIDA-BHL-2026-002', registrationDate: now - DAY*180, expiryDate: now + DAY*185, rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: now - DAY*180, submittedAt: now - DAY*188, documents: { revenueLicense: 'jcb-license.pdf', motorTrafficCertificate: 'jcb-traffic.pdf', affidavit: 'jcb-affidavit.pdf', engineerReport: 'jcb-engineer.pdf' }, appeal: null },
+        { id: 'm_005', ownerId: 'u_owner_003', type: 'CRN', makeModel: 'Kobelco CKE900',       countryOfOrigin: 'Japan',   location: 'Kadawatha',     status: 'rejected',        registrationNumber: null,                registrationDate: null,          expiryDate: null,          rejectionReason: 'Supporting documents were incomplete at the time of review.', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: null, submittedAt: now - DAY*6, documents: { revenueLicense: 'kobelco-license.pdf', motorTrafficCertificate: 'kobelco-traffic.pdf', affidavit: 'kobelco-affidavit.pdf', engineerReport: 'kobelco-engineer.pdf' }, appeal: { status: 'submitted', message: 'Updated engineer report has been attached for reconsideration.', submittedAt: now - DAY*1, reviewedAt: null, adminNotes: '' } },
+        { id: 'm_006', ownerId: 'u_owner_004', type: 'CNM', makeModel: 'SANY SY306C-8',        countryOfOrigin: 'China',   location: 'Galle',         status: 'approved',        registrationNumber: 'CIDA-CNM-2026-003', registrationDate: now - DAY*120, expiryDate: now + DAY*245, rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: now - DAY*120, submittedAt: now - DAY*127, documents: { revenueLicense: 'sany-license.pdf', motorTrafficCertificate: 'sany-traffic.pdf', affidavit: 'sany-affidavit.pdf', engineerReport: 'sany-engineer.pdf' }, appeal: null },
+        { id: 'm_007', ownerId: 'u_owner_005', type: 'DMP', makeModel: 'Isuzu CXZ Dump Truck', countryOfOrigin: 'Japan',   location: 'Dambulla',      status: 'pending_renewal', registrationNumber: 'CIDA-DMP-2025-021', registrationDate: now - DAY*353, expiryDate: now + DAY*12,  rejectionReason: '', feeAtSubmission: 1000, renewalCount: 1, renewalRequestedAt: now - DAY*2, certificateIssuedAt: now - DAY*353, submittedAt: now - DAY*361, documents: { revenueLicense: 'isuzu-license.pdf', motorTrafficCertificate: 'isuzu-traffic.pdf', affidavit: 'isuzu-affidavit.pdf', engineerReport: 'isuzu-engineer.pdf' }, appeal: null },
+        { id: 'm_008', ownerId: 'u_owner_006', type: 'MG',  makeModel: 'Caterpillar 140K',     countryOfOrigin: 'USA',     location: 'Matara',        status: 'rejected',        registrationNumber: null,                registrationDate: null,          expiryDate: null,          rejectionReason: 'Inspection identified unsafe braking components.', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: null, submittedAt: now - DAY*28, documents: { revenueLicense: 'grader-license.pdf', motorTrafficCertificate: 'grader-traffic.pdf', affidavit: 'grader-affidavit.pdf', engineerReport: 'grader-engineer.pdf' }, appeal: { status: 'dismissed', message: 'Repair work was completed after the first inspection.', submittedAt: now - DAY*20, reviewedAt: now - DAY*16, adminNotes: 'Appeal dismissed until a fresh inspection report is provided.' } },
+        { id: 'm_009', ownerId: 'u_owner_007', type: 'PIL', makeModel: 'Bauer BG 28',          countryOfOrigin: 'Germany', location: 'Anuradhapura',  status: 'approved',        registrationNumber: 'CIDA-PIL-2026-004', registrationDate: now - DAY*351, expiryDate: now + DAY*14,  rejectionReason: '', feeAtSubmission: 1000, renewalCount: 2, renewalRequestedAt: null, certificateIssuedAt: now - DAY*351, submittedAt: now - DAY*360, documents: { revenueLicense: 'bauer-license.pdf', motorTrafficCertificate: 'bauer-traffic.pdf', affidavit: 'bauer-affidavit.pdf', engineerReport: 'bauer-engineer.pdf' }, appeal: null },
+        { id: 'm_010', ownerId: 'u_owner_008', type: 'CPM', makeModel: 'Schwing SP 2800',      countryOfOrigin: 'Germany', location: 'Kalutara',      status: 'approved',        registrationNumber: 'CIDA-CPM-2026-005', registrationDate: now - DAY*90,  expiryDate: now + DAY*275, rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: now - DAY*90,  submittedAt: now - DAY*97,  documents: { revenueLicense: 'schwing-license.pdf', motorTrafficCertificate: 'schwing-traffic.pdf', affidavit: 'schwing-affidavit.pdf', engineerReport: 'schwing-engineer.pdf' }, appeal: null },
+        // Admin-approved and awaiting DG certification — demonstrates the new 2-step workflow
+        { id: 'm_011', ownerId: 'u_owner_009', type: 'BDZ', makeModel: 'Komatsu D65PX',        countryOfOrigin: 'Japan',   location: 'Ratnapura',     status: 'admin_approved',  registrationNumber: null,                registrationDate: null,          expiryDate: null,          rejectionReason: '', feeAtSubmission: 1000, renewalCount: 0, renewalRequestedAt: null, certificateIssuedAt: null, submittedAt: now - DAY*4, documents: { revenueLicense: 'komatsu-d65-license.pdf', motorTrafficCertificate: 'komatsu-d65-traffic.pdf', affidavit: 'komatsu-d65-affidavit.pdf', engineerReport: 'komatsu-d65-engineer.pdf' }, appeal: null },
     ];
 
     for (const m of seedMachinery) {
@@ -211,7 +239,7 @@ async function seedDatabase(conn) {
     console.log('Demo data seeded successfully.');
 }
 
-// ─── Startup: create tables + seed ──────────────────────────────────────────
+// ─── Startup: create tables + seed ───────────────────────────────────────────
 
 (async () => {
     try {
@@ -221,6 +249,7 @@ async function seedDatabase(conn) {
         await conn.execute(`
             CREATE TABLE IF NOT EXISTS contractors (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(50) DEFAULT NULL,
                 full_name VARCHAR(100) NOT NULL,
                 company_name VARCHAR(150) NOT NULL,
                 cida_number VARCHAR(50) NOT NULL,
@@ -228,7 +257,8 @@ async function seedDatabase(conn) {
                 password VARCHAR(255) NOT NULL,
                 contact_details VARCHAR(50) NOT NULL,
                 status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         `);
 
@@ -252,7 +282,7 @@ async function seedDatabase(conn) {
                 company_name VARCHAR(150) DEFAULT NULL,
                 email VARCHAR(150) NOT NULL UNIQUE,
                 password VARCHAR(255) NOT NULL,
-                role ENUM('admin','director_general','owner') NOT NULL,
+                role ENUM('admin','director_general','owner','contractor') NOT NULL,
                 contact_details VARCHAR(50) DEFAULT '',
                 address TEXT DEFAULT '',
                 PRIMARY KEY (id)
@@ -267,7 +297,7 @@ async function seedDatabase(conn) {
                 make_model VARCHAR(150) NOT NULL,
                 country_of_origin VARCHAR(100) DEFAULT '',
                 location VARCHAR(150) DEFAULT '',
-                status VARCHAR(30) DEFAULT 'pending',
+                status ENUM('pending','admin_approved','approved','rejected','revoked','pending_renewal') DEFAULT 'pending',
                 registration_number VARCHAR(50) DEFAULT NULL,
                 registration_date BIGINT DEFAULT NULL,
                 expiry_date BIGINT DEFAULT NULL,
@@ -297,14 +327,36 @@ async function seedDatabase(conn) {
                 site VARCHAR(150) DEFAULT '',
                 documents JSON DEFAULT NULL,
                 created_at BIGINT DEFAULT NULL,
-                PRIMARY KEY (id)
+                PRIMARY KEY (id),
+                FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         `);
 
-        // Migrate existing maintenance table to add owner_id if missing
+        // ─── Schema migrations (idempotent) ───────────────────────────────────
+        // Add 'contractor' to users.role ENUM if not present
         try {
-            await conn.execute('ALTER TABLE maintenance ADD COLUMN owner_id VARCHAR(50) DEFAULT NULL AFTER id');
+            await conn.execute(`ALTER TABLE users MODIFY COLUMN role ENUM('admin','director_general','owner','contractor') NOT NULL`);
+        } catch (e) { /* already up to date */ }
+
+        // Add 'admin_approved' to machinery.status ENUM if not present
+        try {
+            await conn.execute(`ALTER TABLE machinery MODIFY COLUMN status ENUM('pending','admin_approved','approved','rejected','revoked','pending_renewal') DEFAULT 'pending'`);
+        } catch (e) { /* already up to date */ }
+
+        // Add user_id column to contractors if missing
+        try {
+            await conn.execute('ALTER TABLE contractors ADD COLUMN user_id VARCHAR(50) DEFAULT NULL AFTER id');
         } catch (e) { /* column already exists */ }
+
+        // Add FK for contractors.user_id if not present
+        try {
+            await conn.execute('ALTER TABLE contractors ADD CONSTRAINT fk_contractor_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL');
+        } catch (e) { /* constraint already exists */ }
+
+        // Add maintenance.owner_id FK if not present
+        try {
+            await conn.execute('ALTER TABLE maintenance ADD CONSTRAINT fk_maintenance_owner FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL');
+        } catch (e) { /* constraint already exists or column missing */ }
 
         await seedDatabase(conn);
         conn.release();
@@ -316,9 +368,9 @@ async function seedDatabase(conn) {
     }
 })();
 
-// ─── Users API ───────────────────────────────────────────────────────────────
+// ─── Users API ────────────────────────────────────────────────────────────────
 
-// POST /api/users/login
+// POST /api/users/login  (public)
 app.post('/api/users/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -341,14 +393,20 @@ app.post('/api/users/login', async (req, res) => {
             return res.json({ success: false, message: 'Invalid email or password.' });
         }
 
-        res.json({ success: true, data: mapUser(user) });
+        const token = jwt.sign(
+            { userId: user.id, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({ success: true, data: mapUser(user), token });
     } catch (err) {
         console.error('Login error:', err);
         res.json({ success: false, message: 'Database error occurred.' });
     }
 });
 
-// POST /api/users/register
+// POST /api/users/register  (public — owners only)
 app.post('/api/users/register', async (req, res) => {
     try {
         const { name, companyName, email, password, contactDetails, address } = req.body;
@@ -370,15 +428,16 @@ app.post('/api/users/register', async (req, res) => {
         );
 
         const [[newUser]] = await pool.execute('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
-        res.json({ success: true, data: mapUser(newUser) });
+        const token = jwt.sign({ userId: newUser.id, role: 'owner' }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ success: true, data: mapUser(newUser), token });
     } catch (err) {
         console.error('Register error:', err);
         res.json({ success: false, message: 'Database error occurred.' });
     }
 });
 
-// GET /api/users
-app.get('/api/users', async (req, res) => {
+// GET /api/users  (admin, director_general only)
+app.get('/api/users', authenticate, authorize('admin', 'director_general'), async (req, res) => {
     try {
         const [rows] = await pool.execute('SELECT * FROM users');
         res.json({ success: true, data: rows.map(mapUser) });
@@ -388,8 +447,8 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
-// GET /api/users/:id
-app.get('/api/users/:id', async (req, res) => {
+// GET /api/users/:id  (any authenticated user — needed for profile lookups)
+app.get('/api/users/:id', authenticate, async (req, res) => {
     try {
         const [rows] = await pool.execute('SELECT * FROM users WHERE id = ? LIMIT 1', [req.params.id]);
         if (!rows.length) return res.json({ success: false, data: null });
@@ -402,15 +461,29 @@ app.get('/api/users/:id', async (req, res) => {
 
 // ─── Machinery API ────────────────────────────────────────────────────────────
 
-// GET /api/machinery   (optional ?ownerId=)
-app.get('/api/machinery', async (req, res) => {
+// GET /api/machinery
+// - admin / director_general: see all (optional ?ownerId filter)
+// - owner: sees only their own machinery
+// - contractor: sees only approved machinery
+app.get('/api/machinery', authenticate, authorize('admin', 'director_general', 'owner', 'contractor'), async (req, res) => {
     try {
-        let query = 'SELECT * FROM machinery ORDER BY submitted_at DESC';
-        let params = [];
-        if (req.query.ownerId) {
+        let query, params = [];
+
+        if (req.user.role === 'owner') {
             query = 'SELECT * FROM machinery WHERE owner_id = ? ORDER BY submitted_at DESC';
-            params = [req.query.ownerId];
+            params = [req.user.userId];
+        } else if (req.user.role === 'contractor') {
+            query = 'SELECT * FROM machinery WHERE status = "approved" ORDER BY submitted_at DESC';
+        } else {
+            // admin / director_general
+            if (req.query.ownerId) {
+                query = 'SELECT * FROM machinery WHERE owner_id = ? ORDER BY submitted_at DESC';
+                params = [req.query.ownerId];
+            } else {
+                query = 'SELECT * FROM machinery ORDER BY submitted_at DESC';
+            }
         }
+
         const [rows] = await pool.execute(query, params);
         res.json({ success: true, data: rows.map(mapMachinery) });
     } catch (err) {
@@ -419,20 +492,43 @@ app.get('/api/machinery', async (req, res) => {
     }
 });
 
-// GET /api/machinery/:id
-app.get('/api/machinery/:id', async (req, res) => {
+// GET /api/machinery/expiring  — machines expiring within 30 days (admin / DG)
+app.get('/api/machinery/expiring', authenticate, authorize('admin', 'director_general'), async (req, res) => {
     try {
-        const [rows] = await pool.execute('SELECT * FROM machinery WHERE id = ? LIMIT 1', [req.params.id]);
-        if (!rows.length) return res.json({ success: false, data: null });
-        res.json({ success: true, data: mapMachinery(rows[0]) });
+        const now = Date.now();
+        const cutoff = now + 30 * DAY;
+        const [rows] = await pool.execute(
+            'SELECT * FROM machinery WHERE status = "approved" AND expiry_date IS NOT NULL AND expiry_date <= ? AND expiry_date >= ? ORDER BY expiry_date ASC',
+            [cutoff, now]
+        );
+        res.json({ success: true, data: rows.map(mapMachinery) });
     } catch (err) {
         console.error(err);
         res.json({ success: false, message: 'Database error occurred.' });
     }
 });
 
-// POST /api/machinery
-app.post('/api/machinery', async (req, res) => {
+// GET /api/machinery/:id
+app.get('/api/machinery/:id', authenticate, authorize('admin', 'director_general', 'owner', 'contractor'), async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM machinery WHERE id = ? LIMIT 1', [req.params.id]);
+        if (!rows.length) return res.json({ success: false, data: null });
+
+        const machine = mapMachinery(rows[0]);
+        // Owner can only view their own machines
+        if (req.user.role === 'owner' && machine.ownerId !== req.user.userId) {
+            return res.status(403).json({ success: false, message: 'Access denied.' });
+        }
+
+        res.json({ success: true, data: machine });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: 'Database error occurred.' });
+    }
+});
+
+// POST /api/machinery  (owners only)
+app.post('/api/machinery', authenticate, authorize('owner'), async (req, res) => {
     try {
         const m = req.body;
         const id = generateId('m');
@@ -442,12 +538,10 @@ app.post('/api/machinery', async (req, res) => {
              renewal_count, renewal_requested_at, certificate_issued_at, submitted_at, documents, appeal)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                id, m.ownerId, m.type, m.makeModel || '', m.countryOfOrigin || '', m.location || '',
-                m.status || 'pending', m.registrationNumber || null, m.registrationDate || null,
-                m.expiryDate || null, m.rejectionReason || '', m.feeAtSubmission || 0,
-                m.renewalCount || 0, m.renewalRequestedAt || null, m.certificateIssuedAt || null,
-                m.submittedAt || Date.now(),
-                JSON.stringify(m.documents || {}), m.appeal ? JSON.stringify(m.appeal) : null
+                id, req.user.userId, m.type, m.makeModel || '', m.countryOfOrigin || '', m.location || '',
+                'pending', null, null, null, '', m.feeAtSubmission || 0,
+                0, null, null, Date.now(),
+                JSON.stringify(m.documents || {}), null
             ]
         );
         const [[row]] = await pool.execute('SELECT * FROM machinery WHERE id = ? LIMIT 1', [id]);
@@ -458,9 +552,43 @@ app.post('/api/machinery', async (req, res) => {
     }
 });
 
-// PATCH /api/machinery/:id
-app.patch('/api/machinery/:id', async (req, res) => {
+// PATCH /api/machinery/:id  — role-scoped field restrictions
+app.patch('/api/machinery/:id', authenticate, authorize('admin', 'director_general', 'owner'), async (req, res) => {
     try {
+        const [existing] = await pool.execute('SELECT * FROM machinery WHERE id = ? LIMIT 1', [req.params.id]);
+        if (!existing.length) {
+            return res.status(404).json({ success: false, message: 'Machinery record not found.' });
+        }
+        const current = mapMachinery(existing[0]);
+
+        // ── Owner: may only request renewal or submit an appeal ──────────────
+        if (req.user.role === 'owner') {
+            if (current.ownerId !== req.user.userId) {
+                return res.status(403).json({ success: false, message: 'Not authorised to modify this record.' });
+            }
+            const OWNER_ALLOWED = new Set(['status', 'appeal', 'renewalRequestedAt']);
+            if (Object.keys(req.body).some(f => !OWNER_ALLOWED.has(f))) {
+                return res.status(403).json({ success: false, message: 'Owners may only update renewal or appeal fields.' });
+            }
+            if (req.body.status && req.body.status !== 'pending_renewal') {
+                return res.status(403).json({ success: false, message: 'Owners may only submit a renewal request.' });
+            }
+        }
+
+        // ── Admin: may only approve (admin_approved) or reject pending items ─
+        if (req.user.role === 'admin') {
+            const ADMIN_ALLOWED = new Set(['status', 'rejectionReason', 'appeal']);
+            if (Object.keys(req.body).some(f => !ADMIN_ALLOWED.has(f))) {
+                return res.status(403).json({ success: false, message: 'Admin may only update status and rejection reason.' });
+            }
+            if (req.body.status && !['admin_approved', 'rejected'].includes(req.body.status)) {
+                return res.status(403).json({ success: false, message: 'Admin may only set status to admin_approved or rejected.' });
+            }
+        }
+
+        // ── Director General: unrestricted on allowed machinery fields ───────
+        // (DG sets approved, rejected, revoked, registrationNumber, expiry, etc.)
+
         const { setClauses, params } = buildPatchQuery('machinery', machineryFieldMap, req.body);
         if (!setClauses.length) return res.json({ success: false, message: 'No fields to update.' });
 
@@ -476,15 +604,21 @@ app.patch('/api/machinery/:id', async (req, res) => {
 
 // ─── Maintenance API ──────────────────────────────────────────────────────────
 
-// GET /api/maintenance   (optional ?ownerId=)
-app.get('/api/maintenance', async (req, res) => {
+// GET /api/maintenance — admin sees all; owner sees own
+app.get('/api/maintenance', authenticate, authorize('admin', 'owner'), async (req, res) => {
     try {
         let query = 'SELECT * FROM maintenance ORDER BY created_at DESC';
         let params = [];
-        if (req.query.ownerId) {
+
+        if (req.user.role === 'owner') {
+            query = 'SELECT * FROM maintenance WHERE owner_id = ? ORDER BY created_at DESC';
+            params = [req.user.userId];
+        } else if (req.query.ownerId) {
+            // Admin can optionally filter by owner
             query = 'SELECT * FROM maintenance WHERE owner_id = ? ORDER BY created_at DESC';
             params = [req.query.ownerId];
         }
+
         const [rows] = await pool.execute(query, params);
         res.json({ success: true, data: rows.map(mapMaintenance) });
     } catch (err) {
@@ -493,16 +627,18 @@ app.get('/api/maintenance', async (req, res) => {
     }
 });
 
-// POST /api/maintenance
-app.post('/api/maintenance', async (req, res) => {
+// POST /api/maintenance  (admin or owner)
+app.post('/api/maintenance', authenticate, authorize('admin', 'owner'), async (req, res) => {
     try {
         const mt = req.body;
         const id = generateId('mt');
+        const ownerId = req.user.role === 'owner' ? req.user.userId : (mt.ownerId || null);
+
         await pool.execute(
             `INSERT INTO maintenance (id, owner_id, equipment_id, equipment_name, maintenance_date, status, maintenance_type, location, site, documents, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                id, mt.ownerId || null, mt.equipmentId || '', mt.equipmentName || '',
+                id, ownerId, mt.equipmentId || '', mt.equipmentName || '',
                 mt.maintenanceDate || '', mt.status || 'scheduled', mt.maintenanceType || 'service',
                 mt.location || '', mt.site || '',
                 JSON.stringify(mt.documents || {}), mt.createdAt || Date.now()
@@ -516,32 +652,8 @@ app.post('/api/maintenance', async (req, res) => {
     }
 });
 
-// ─── Stats API ────────────────────────────────────────────────────────────────
-
-// GET /api/stats
-app.get('/api/stats', async (req, res) => {
-    try {
-        const [[{ totalRegistered }]] = await pool.execute('SELECT COUNT(*) AS totalRegistered FROM machinery');
-        const [[{ totalApproved }]]   = await pool.execute('SELECT COUNT(*) AS totalApproved FROM machinery WHERE status = "approved"');
-        const [[{ totalRevoked }]]    = await pool.execute('SELECT COUNT(*) AS totalRevoked FROM machinery WHERE status = "revoked"');
-        const [[{ totalOwners }]]     = await pool.execute('SELECT COUNT(*) AS totalOwners FROM users WHERE role = "owner"');
-        res.json({
-            success: true,
-            data: {
-                totalRegistered: Number(totalRegistered),
-                totalApproved: Number(totalApproved),
-                totalRevoked: Number(totalRevoked),
-                totalOwners: Number(totalOwners)
-            }
-        });
-    } catch (err) {
-        console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
-    }
-});
-
-// PATCH /api/maintenance/:id
-app.patch('/api/maintenance/:id', async (req, res) => {
+// PATCH /api/maintenance/:id  (admin only)
+app.patch('/api/maintenance/:id', authenticate, authorize('admin'), async (req, res) => {
     try {
         const { setClauses, params } = buildPatchQuery('maintenance', maintenanceFieldMap, req.body);
         if (!setClauses.length) return res.json({ success: false, message: 'No fields to update.' });
@@ -556,9 +668,42 @@ app.patch('/api/maintenance/:id', async (req, res) => {
     }
 });
 
-// ─── Contractors API (existing) ───────────────────────────────────────────────
+// ─── Stats API ────────────────────────────────────────────────────────────────
 
-// API: Register Contractor
+// GET /api/stats  (admin, director_general)
+app.get('/api/stats', authenticate, authorize('admin', 'director_general'), async (req, res) => {
+    try {
+        const [[{ totalRegistered }]] = await pool.execute('SELECT COUNT(*) AS totalRegistered FROM machinery');
+        const [[{ totalApproved }]]   = await pool.execute('SELECT COUNT(*) AS totalApproved FROM machinery WHERE status = "approved"');
+        const [[{ totalRevoked }]]    = await pool.execute('SELECT COUNT(*) AS totalRevoked FROM machinery WHERE status = "revoked"');
+        const [[{ totalOwners }]]     = await pool.execute('SELECT COUNT(*) AS totalOwners FROM users WHERE role = "owner"');
+        const [[{ totalPending }]]    = await pool.execute('SELECT COUNT(*) AS totalPending FROM machinery WHERE status = "pending"');
+        const [[{ totalAdminApproved }]] = await pool.execute('SELECT COUNT(*) AS totalAdminApproved FROM machinery WHERE status = "admin_approved"');
+        const [[{ totalRejected }]]   = await pool.execute('SELECT COUNT(*) AS totalRejected FROM machinery WHERE status = "rejected"');
+        const [[{ totalRenewal }]]    = await pool.execute('SELECT COUNT(*) AS totalRenewal FROM machinery WHERE status = "pending_renewal"');
+        res.json({
+            success: true,
+            data: {
+                totalRegistered: Number(totalRegistered),
+                totalApproved: Number(totalApproved),
+                totalRevoked: Number(totalRevoked),
+                totalOwners: Number(totalOwners),
+                totalPending: Number(totalPending),
+                totalAdminApproved: Number(totalAdminApproved),
+                totalRejected: Number(totalRejected),
+                totalRenewal: Number(totalRenewal)
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: 'Database error occurred.' });
+    }
+});
+
+// ─── Contractors API ──────────────────────────────────────────────────────────
+
+// POST /api/register_contractor.php  (public)
+// Priority 2: Also creates a users record so contractor is a specialization of User
 app.post('/api/register_contractor.php', async (req, res) => {
     try {
         const { full_name, company_name, cida_number, email, password, contact_details } = req.body;
@@ -566,31 +711,40 @@ app.post('/api/register_contractor.php', async (req, res) => {
         if (!full_name || !company_name || !cida_number || !email || !password || !contact_details) {
             return res.json({ success: false, message: 'Incomplete data provided.' });
         }
-
         if (password.length < 8) {
             return res.json({ success: false, message: 'Password must be at least 8 characters.' });
         }
 
-        const [existing] = await pool.execute('SELECT id FROM contractors WHERE email = ? LIMIT 1', [email]);
-        if (existing.length > 0) {
-            return res.json({ success: false, message: 'Contractor account already exists for this email.' });
+        // Check both tables for duplicate email
+        const [existingContractor] = await pool.execute('SELECT id FROM contractors WHERE email = ? LIMIT 1', [email]);
+        const [existingUser]       = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [email.trim().toLowerCase()]);
+        if (existingContractor.length || existingUser.length) {
+            return res.json({ success: false, message: 'An account already exists for this email.' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
+        const userId = generateId('c');
 
+        // Create users record (contractor specialization — Priority 2)
         await pool.execute(
-            'INSERT INTO contractors (full_name, company_name, cida_number, email, password, contact_details) VALUES (?, ?, ?, ?, ?, ?)',
-            [full_name, company_name, cida_number, email, hashedPassword, contact_details]
+            'INSERT INTO users (id, name, company_name, email, password, role, contact_details, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [userId, full_name, company_name, email.trim().toLowerCase(), hashedPassword, 'contractor', contact_details, '']
+        );
+
+        // Create contractors record with FK to users
+        await pool.execute(
+            'INSERT INTO contractors (user_id, full_name, company_name, cida_number, email, password, contact_details) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [userId, full_name, company_name, cida_number, email, hashedPassword, contact_details]
         );
 
         res.json({ success: true, message: 'Registration successful. Please wait for CIDA admin approval.' });
     } catch (error) {
-        console.error('Registration error:', error);
+        console.error('Contractor registration error:', error);
         res.json({ success: false, message: 'Database error occurred.' });
     }
 });
 
-// API: Login Contractor
+// POST /api/login_contractor.php  (public — returns JWT using users.id)
 app.post('/api/login_contractor.php', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -599,58 +753,71 @@ app.post('/api/login_contractor.php', async (req, res) => {
             return res.json({ success: false, message: 'Email and password are required.' });
         }
 
-        const [users] = await pool.execute(
-            'SELECT id, full_name, company_name, email, password, status FROM contractors WHERE email = ? LIMIT 1',
+        const [rows] = await pool.execute(
+            'SELECT c.id, c.user_id, c.full_name, c.company_name, c.email, c.password, c.status FROM contractors c WHERE c.email = ? LIMIT 1',
             [email]
         );
 
-        if (users.length === 0) {
+        if (!rows.length) {
             return res.json({ success: false, message: 'Invalid email or password.' });
         }
 
-        const user = users[0];
-        const match = await bcrypt.compare(password, user.password);
-
+        const contractor = rows[0];
+        const match = await bcrypt.compare(password, contractor.password);
         if (!match) {
             return res.json({ success: false, message: 'Invalid email or password.' });
         }
 
-        if (user.status === 'pending') {
+        if (contractor.status === 'pending') {
             return res.json({ success: false, message: 'Your account is still pending CIDA approval.' });
-        } else if (user.status === 'rejected') {
-            return res.json({ success: false, message: 'Your account registration was rejected.' });
-        } else if (user.status === 'approved') {
-            delete user.password;
-            user.role = 'contractor';
-            return res.json({ success: true, message: 'Login successful.', user });
-        } else {
-            return res.json({ success: false, message: 'Unknown account status.' });
         }
+        if (contractor.status === 'rejected') {
+            return res.json({ success: false, message: 'Your account registration was rejected.' });
+        }
+
+        // Use user_id for JWT (Priority 2: contractor IS a user)
+        const effectiveUserId = contractor.user_id || String(contractor.id);
+        const token = jwt.sign(
+            { userId: effectiveUserId, role: 'contractor', contractorId: contractor.id },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            success: true,
+            message: 'Login successful.',
+            token,
+            user: {
+                id: effectiveUserId,
+                contractorId: contractor.id,
+                full_name: contractor.full_name,
+                company_name: contractor.company_name,
+                email: contractor.email,
+                role: 'contractor'
+            }
+        });
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('Contractor login error:', error);
         res.json({ success: false, message: 'Database error occurred.' });
     }
 });
 
-// API: Admin Contractors (GET = list, POST = approve/reject)
-app.all('/api/admin_contractors.php', async (req, res) => {
+// GET/POST /api/admin_contractors.php  (admin only)
+app.all('/api/admin_contractors.php', authenticate, authorize('admin'), async (req, res) => {
     try {
         if (req.method === 'GET') {
             const [contractors] = await pool.execute(
-                'SELECT id, full_name, company_name, cida_number, email, contact_details, status, created_at FROM contractors ORDER BY created_at DESC'
+                'SELECT id, user_id, full_name, company_name, cida_number, email, contact_details, status, created_at FROM contractors ORDER BY created_at DESC'
             );
             res.json({ success: true, contractors });
         } else if (req.method === 'POST') {
             const { contractor_id, action } = req.body;
-
             if (!contractor_id || !action) {
                 return res.json({ success: false, message: 'Contractor ID and action are required.' });
             }
-
             if (action !== 'approve' && action !== 'reject') {
                 return res.json({ success: false, message: 'Invalid action.' });
             }
-
             const newStatus = action === 'approve' ? 'approved' : 'rejected';
             await pool.execute('UPDATE contractors SET status = ? WHERE id = ?', [newStatus, contractor_id]);
             res.json({ success: true, message: `Contractor status updated to ${newStatus}.` });
@@ -658,24 +825,43 @@ app.all('/api/admin_contractors.php', async (req, res) => {
             res.json({ success: false, message: 'Invalid method.' });
         }
     } catch (error) {
-        console.error('Admin API error:', error);
+        console.error('Admin contractors API error:', error);
         res.json({ success: false, message: 'Database error occurred.' });
     }
 });
 
-// API: Rentals (GET = list, POST = create)
-app.all('/api/rentals.php', async (req, res) => {
+// ─── Rentals API ──────────────────────────────────────────────────────────────
+
+// GET/POST /api/rentals.php  (admin sees all; contractor sees own + can create)
+app.all('/api/rentals.php', authenticate, authorize('admin', 'contractor'), async (req, res) => {
     try {
         if (req.method === 'GET') {
-            const [rentals] = await pool.execute(`
-                SELECT r.id, r.contractor_id, r.machine_id, r.status, r.start_date, r.end_date, r.created_at, c.company_name, c.full_name
-                FROM rentals r
-                JOIN contractors c ON r.contractor_id = c.id
-                ORDER BY r.created_at DESC
-            `);
+            let query, params = [];
+            if (req.user.role === 'contractor') {
+                query = `
+                    SELECT r.id, r.contractor_id, r.machine_id, r.status, r.start_date, r.end_date, r.created_at,
+                           c.company_name, c.full_name
+                    FROM rentals r
+                    JOIN contractors c ON r.contractor_id = c.id
+                    WHERE r.contractor_id = ?
+                    ORDER BY r.created_at DESC`;
+                params = [req.user.contractorId];
+            } else {
+                query = `
+                    SELECT r.id, r.contractor_id, r.machine_id, r.status, r.start_date, r.end_date, r.created_at,
+                           c.company_name, c.full_name
+                    FROM rentals r
+                    JOIN contractors c ON r.contractor_id = c.id
+                    ORDER BY r.created_at DESC`;
+            }
+            const [rentals] = await pool.execute(query, params);
             res.json({ success: true, rentals });
         } else if (req.method === 'POST') {
-            const { contractor_id, machine_id, start_date, end_date } = req.body;
+            if (req.user.role !== 'contractor') {
+                return res.status(403).json({ success: false, message: 'Only contractors can submit rental requests.' });
+            }
+            const { machine_id, start_date, end_date } = req.body;
+            const contractor_id = req.user.contractorId;
 
             if (!contractor_id || !machine_id || !start_date || !end_date) {
                 return res.json({ success: false, message: 'Missing rental request details.' });
@@ -685,7 +871,6 @@ app.all('/api/rentals.php', async (req, res) => {
                 'INSERT INTO rentals (contractor_id, machine_id, start_date, end_date) VALUES (?, ?, ?, ?)',
                 [contractor_id, machine_id, start_date, end_date]
             );
-
             res.json({ success: true, message: 'Rental request submitted successfully.', rental_id: result.insertId });
         } else {
             res.json({ success: false, message: 'Invalid method.' });
@@ -696,8 +881,8 @@ app.all('/api/rentals.php', async (req, res) => {
     }
 });
 
-// PATCH /api/rentals/:id  — update rental status (admin)
-app.patch('/api/rentals/:id', async (req, res) => {
+// PATCH /api/rentals/:id  (admin only)
+app.patch('/api/rentals/:id', authenticate, authorize('admin'), async (req, res) => {
     try {
         const { status } = req.body;
         const allowed = ['requested', 'approved', 'completed', 'rejected'];
