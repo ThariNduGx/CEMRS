@@ -2,6 +2,16 @@
   var SETTINGS_KEY = "cida_maintenance_settings";
   var DAY = 1000 * 60 * 60 * 24;
 
+  function authHeaders(includeContentType) {
+    var h = {};
+    try {
+      var session = JSON.parse(sessionStorage.getItem("cida_session") || "null");
+      if (session && session.token) h["Authorization"] = "Bearer " + session.token;
+    } catch (e) {}
+    if (includeContentType) h["Content-Type"] = "application/json";
+    return h;
+  }
+
   function readSettings() {
     try {
       return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {
@@ -441,7 +451,7 @@
     if (!tbody) return;
 
     try {
-      var response = await fetch('api/admin_contractors.php');
+      var response = await fetch('api/admin_contractors.php', { headers: authHeaders(false) });
       var result = await response.json();
 
       if (result.success) {
@@ -499,7 +509,7 @@
     try {
       var response = await fetch('api/admin_contractors.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(true),
         body: JSON.stringify({ contractor_id: id, action: action })
       });
 
