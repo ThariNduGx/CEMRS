@@ -668,7 +668,7 @@ app.all('/api/rentals.php', async (req, res) => {
     try {
         if (req.method === 'GET') {
             const [rentals] = await pool.execute(`
-                SELECT r.id, r.contractor_id, r.machine_id, r.status, r.start_date, r.end_date, r.created_at, c.company_name
+                SELECT r.id, r.contractor_id, r.machine_id, r.status, r.start_date, r.end_date, r.created_at, c.company_name, c.full_name
                 FROM rentals r
                 JOIN contractors c ON r.contractor_id = c.id
                 ORDER BY r.created_at DESC
@@ -692,6 +692,22 @@ app.all('/api/rentals.php', async (req, res) => {
         }
     } catch (error) {
         console.error('Rentals API error:', error);
+        res.json({ success: false, message: 'Database error occurred.' });
+    }
+});
+
+// PATCH /api/rentals/:id  — update rental status (admin)
+app.patch('/api/rentals/:id', async (req, res) => {
+    try {
+        const { status } = req.body;
+        const allowed = ['requested', 'approved', 'completed', 'rejected'];
+        if (!status || !allowed.includes(status)) {
+            return res.json({ success: false, message: 'Invalid or missing status value.' });
+        }
+        await pool.execute('UPDATE rentals SET status = ? WHERE id = ?', [status, req.params.id]);
+        res.json({ success: true, message: 'Rental status updated.' });
+    } catch (error) {
+        console.error('Rental PATCH error:', error);
         res.json({ success: false, message: 'Database error occurred.' });
     }
 });

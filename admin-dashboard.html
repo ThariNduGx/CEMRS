@@ -6,9 +6,7 @@
   <title>Admin Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <style>
-    body { background-color: #f4f6f9; }
-  </style>
+  <style>body { background-color: #f1f5f9; }</style>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-page="admin-dashboard">
@@ -45,6 +43,7 @@
       <a href="#admin-report-section">Submit Report</a>
       <a href="#registration-summary-section">Registration Summary</a>
       <a href="#contractors-management-section">Contractor Management</a>
+      <a href="#rental-requests-section">Rental Requests</a>
       <a href="#maintenance-settings-section">Settings</a>
     </nav>
 
@@ -160,8 +159,37 @@
         <div id="admin-contractor-feedback" class="feedback"></div>
       </section>
 
+      <!-- Rental Requests -->
+      <section id="rental-requests-section" class="panel" style="display: none;">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Rental Requests</p>
+            <h2>Contractor Rental Management</h2>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Contractor</th>
+                <th>Company</th>
+                <th>Machinery ID</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-rentals-body">
+              <tr><td colspan="6" class="muted" style="text-align: center;">Loading rental requests...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="admin-rental-feedback" class="feedback"></div>
+      </section>
+
       <!-- Settings -->
-      <section id="maintenance-settings-section" class="panel">
+      <section id="maintenance-settings-section" class="panel" style="display: none;">
         <div class="section-head">
           <div>
             <p class="eyebrow">Settings</p>

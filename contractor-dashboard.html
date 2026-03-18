@@ -4,24 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="dashboard.contractorPageTitle">Contractor Dashboard</title>
-  <style>
-    body { background-color: #0f1115; }
-    .contractor-machinery-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-top: 1.5rem;
-    }
-    .machine-card {
-      background: #181b21;
-      border: 1px solid #2d323e;
-      border-radius: 8px;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-  </style>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-page="contractor-dashboard">
@@ -256,13 +238,14 @@
                         const m = machines.find(mac => mac.id === r.machine_id) || {};
                         const typeLabel = m.type ? CIDA_UTILS.getMachineryTypeDetails(m.type).label : 'Unknown';
                         const regNo = m.registrationNumber || r.machine_id;
+                        const statusTone = r.status === 'approved' ? 'approved' : r.status === 'rejected' ? 'rejected' : r.status === 'completed' ? 'approved' : 'pending';
 
                         return `
                             <tr>
-                                <td>${regNo}</td>
-                                <td>${typeLabel}</td>
-                                <td>${r.start_date} to ${r.end_date}</td>
-                                <td><span class="status-badge" data-tone="${r.status === 'approved' ? 'approved' : 'pending'}">${r.status.toUpperCase()}</span></td>
+                                <td>${CIDA_UTILS.escapeHtml(regNo)}</td>
+                                <td>${CIDA_UTILS.escapeHtml(typeLabel)}</td>
+                                <td>${CIDA_UTILS.escapeHtml(r.start_date)} to ${CIDA_UTILS.escapeHtml(r.end_date)}</td>
+                                <td><span class="badge badge--${statusTone}">${CIDA_UTILS.escapeHtml(r.status.charAt(0).toUpperCase() + r.status.slice(1))}</span></td>
                             </tr>
                         `;
                     }).join('');
