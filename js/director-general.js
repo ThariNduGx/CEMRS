@@ -115,21 +115,51 @@
     var modal = document.getElementById("dg-document-modal");
     var content = document.getElementById("dg-document-content");
     var machine = await CIDA_DB.findById("machinery", machineId);
-    var fileName = machine && machine.documents ? machine.documents[docKey] : "";
+    var filename = machine && machine.documents ? machine.documents[docKey] : "";
     var label = CIDA_UTILS.getDocumentLabel(docKey);
 
-    if (!modal || !content || !machine) {
+    if (!modal || !content || !machine) return;
+
+    content.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 1rem;">Loading document…</p>';
+    openModal(modal);
+
+    if (!filename) {
+      content.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 1rem;">No file attached for this document.</p>';
       return;
     }
 
-    content.innerHTML =
-      '<article class="doc-preview">' +
-      "<h3>" + CIDA_UTILS.escapeHtml(label) + "</h3>" +
-      "<p>Attached file: " + CIDA_UTILS.escapeHtml(fileName || "-") + "</p>" +
-      '<p class="muted">Document previews are simulated in this prototype.</p>' +
-      "</article>";
+    try {
+      var session = JSON.parse(sessionStorage.getItem("cida_session") || "null");
+      var token = session && session.token ? session.token : "";
+      var response = await fetch("api/documents/" + encodeURIComponent(filename), {
+        headers: { "Authorization": "Bearer " + token }
+      });
 
-    openModal(modal);
+      if (!response.ok) {
+        content.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 1rem;">Document not found on server.</p>';
+        return;
+      }
+
+      var blob = await response.blob();
+      var objectUrl = URL.createObjectURL(blob);
+      var ext = filename.split(".").pop().toLowerCase();
+      var heading = '<h3 style="margin:0 0 .75rem">' + CIDA_UTILS.escapeHtml(label) + '</h3>';
+
+      if (ext === "pdf") {
+        content.innerHTML = heading +
+          '<iframe src="' + objectUrl + '#toolbar=1" style="width:100%;height:72vh;border:none;border-radius:6px;background:#f4f4f5;"></iframe>';
+      } else if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
+        content.innerHTML = heading +
+          '<div style="text-align:center;overflow:auto;max-height:72vh;">' +
+          '<img src="' + objectUrl + '" style="max-width:100%;border-radius:6px;" alt="' + CIDA_UTILS.escapeHtml(label) + '">' +
+          '</div>';
+      } else {
+        content.innerHTML = heading +
+          '<p class="muted">Preview not available for this file type. <a href="' + objectUrl + '" download="' + CIDA_UTILS.escapeHtml(filename) + '">Download file</a></p>';
+      }
+    } catch (e) {
+      content.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 1rem;">Failed to load document.</p>';
+    }
   }
 
   async function renderPending() {
