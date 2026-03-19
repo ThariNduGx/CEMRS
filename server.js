@@ -3,12 +3,38 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
+const multer = require('multer');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = 8000;
 const DAY = 1000 * 60 * 60 * 24;
 const JWT_SECRET = process.env.JWT_SECRET || 'cida-cemrs-jwt-secret-2026';
+
+// ─── File upload configuration ────────────────────────────────────────────────
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const documentStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, crypto.randomUUID() + ext);
+    }
+});
+
+const documentUpload = multer({
+    storage: documentStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB per file
+    fileFilter: (req, file, cb) => {
+        const allowed = ['.pdf', '.jpg', '.jpeg', '.png'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (allowed.includes(ext)) cb(null, true);
+        else cb(new Error('Only PDF and image files are allowed.'));
+    }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -907,6 +933,27 @@ app.patch('/api/rentals/:id', authenticate, authorize('admin'), async (req, res)
         console.error('Rental PATCH error:', error);
         res.json({ success: false, message: 'Database error occurred.' });
     }
+});
+
+// ─── Document upload / serve ──────────────────────────────────────────────────
+
+// POST /api/documents  (owners only — upload one file per call)
+app.post('/api/documents', authenticate, authorize('owner'), documentUpload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded or file type not allowed.' });
+    }
+    res.json({ success: true, filename: req.file.filename, originalName: req.file.originalname });
+});
+
+// GET /api/documents/:filename  (admin, director_general, owner — serves stored file)
+app.get('/api/documents/:filename', authenticate, authorize('admin', 'director_general', 'owner'), (req, res) => {
+    // path.basename prevents directory traversal
+    const filename = path.basename(req.params.filename);
+    const filePath = path.join(UPLOADS_DIR, filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, message: 'File not found.' });
+    }
+    res.sendFile(filePath);
 });
 
 app.listen(PORT, () => {

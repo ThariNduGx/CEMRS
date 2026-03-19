@@ -465,19 +465,44 @@
     }
 
     form.addEventListener("submit", async function (event) {
-      var formData;
-      var fee;
-      var documents;
-
       event.preventDefault();
-      formData = new FormData(form);
-      fee = await updateFeePreview(owner.id);
-      documents = {
-        revenueLicense: (formData.get("revenueLicense") || {}).name || "",
-        motorTrafficCertificate: (formData.get("motorTrafficCertificate") || {}).name || "",
-        affidavit: (formData.get("affidavit") || {}).name || "",
-        engineerReport: (formData.get("engineerReport") || {}).name || "",
-      };
+
+      var formData = new FormData(form);
+      var fee = await updateFeePreview(owner.id);
+      var session = JSON.parse(sessionStorage.getItem("cida_session") || "null");
+      var token = session && session.token ? session.token : "";
+      var docFields = ["revenueLicense", "motorTrafficCertificate", "affidavit", "engineerReport"];
+      var documents = {};
+
+      CIDA_UTILS.setFeedback(feedback, "Uploading documents…", "info");
+
+      for (var i = 0; i < docFields.length; i++) {
+        var field = docFields[i];
+        var file = formData.get(field);
+        if (file && file.size > 0) {
+          var uploadData = new FormData();
+          uploadData.append("file", file);
+          try {
+            var uploadRes = await fetch("api/documents", {
+              method: "POST",
+              headers: { "Authorization": "Bearer " + token },
+              body: uploadData
+            });
+            var uploadResult = await uploadRes.json();
+            if (uploadResult.success) {
+              documents[field] = uploadResult.filename;
+            } else {
+              CIDA_UTILS.setFeedback(feedback, "Upload failed for " + field + ": " + uploadResult.message, "error");
+              return;
+            }
+          } catch (e) {
+            CIDA_UTILS.setFeedback(feedback, "Network error uploading " + field + ".", "error");
+            return;
+          }
+        }
+      }
+
+      CIDA_UTILS.setFeedback(feedback, "Saving record…", "info");
 
       await CIDA_DB.insert("machinery", {
         ownerId: owner.id,

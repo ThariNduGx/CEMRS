@@ -332,21 +332,32 @@
         var docButtons = CIDA_CONSTANTS.documentTypes
           .filter(function (d) { return m.documents && m.documents[d.key]; })
           .map(function (d) {
-            return '<span class="muted" style="font-size:.8rem;">&#128196; ' + CIDA_UTILS.escapeHtml(CIDA_UTILS.getDocumentLabel(d.key)) + "</span>";
-          }).join("<br>");
+            return '<button type="button" class="button button--ghost js-admin-view-doc" ' +
+              'data-id="' + CIDA_UTILS.escapeHtml(m.id) + '" ' +
+              'data-doc="' + CIDA_UTILS.escapeHtml(d.key) + '" ' +
+              'style="font-size:.78rem;padding:.2rem .55rem;">' +
+              CIDA_UTILS.escapeHtml(CIDA_UTILS.getDocumentLabel(d.key)) +
+              '</button>';
+          }).join("");
 
         return "<tr>" +
           "<td><strong>" + CIDA_UTILS.escapeHtml(owner.name) + "</strong><br><span class='muted' style='font-size:.8rem'>" + CIDA_UTILS.escapeHtml(owner.address || "-") + "</span></td>" +
           "<td>" + CIDA_UTILS.escapeHtml(type.label + " (" + type.code + ")") + "</td>" +
           "<td>" + CIDA_UTILS.escapeHtml(m.makeModel) + "</td>" +
           "<td>" + CIDA_UTILS.escapeHtml(m.location) + "</td>" +
-          "<td style='line-height:1.8'>" + (docButtons || '<span class="muted">None</span>') + "</td>" +
+          '<td><div class="action-row action-row--stack">' + (docButtons || '<span class="muted">None</span>') + "</div></td>" +
           "<td>" + CIDA_UTILS.escapeHtml(CIDA_UTILS.formatDate(m.submittedAt)) + "</td>" +
           '<td><div class="action-row">' +
           '<button class="button button--primary js-admin-approve" data-id="' + CIDA_UTILS.escapeHtml(m.id) + '">Forward to DG</button>' +
           '<button class="button button--ghost js-admin-reject" data-id="' + CIDA_UTILS.escapeHtml(m.id) + '">Reject</button>' +
           "</div></td></tr>";
       }).join("");
+
+      tbody.querySelectorAll(".js-admin-view-doc").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          openAdminDocumentPreview(this.dataset.id, this.dataset.doc);
+        });
+      });
 
       tbody.querySelectorAll(".js-admin-approve").forEach(function (btn) {
         btn.addEventListener("click", async function () {
@@ -364,6 +375,69 @@
     } catch (e) {
       console.error(e);
       CIDA_UTILS.setFeedback(feedback, "Failed to load applications.", "error");
+    }
+  }
+
+  async function openAdminDocumentPreview(machineId, docKey) {
+    var modal = document.getElementById("admin-document-modal");
+    var content = document.getElementById("admin-document-content");
+    var machine = await CIDA_DB.findById("machinery", machineId);
+    var filename = machine && machine.documents ? machine.documents[docKey] : "";
+    var label = CIDA_UTILS.getDocumentLabel(docKey);
+
+    if (!modal || !content || !machine) return;
+
+    // Wire close buttons once (idempotent via flag)
+    if (!modal.dataset.wired) {
+      modal.dataset.wired = "1";
+      modal.querySelectorAll("[data-admin-close-doc-modal]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          modal.hidden = true;
+          document.body.classList.remove("modal-open");
+        });
+      });
+    }
+
+    content.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 1rem;">Loading document…</p>';
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+
+    if (!filename) {
+      content.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 1rem;">No file attached for this document.</p>';
+      return;
+    }
+
+    try {
+      var session = JSON.parse(sessionStorage.getItem("cida_session") || "null");
+      var token = session && session.token ? session.token : "";
+      var response = await fetch("api/documents/" + encodeURIComponent(filename), {
+        headers: { "Authorization": "Bearer " + token }
+      });
+
+      if (!response.ok) {
+        content.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 1rem;">Document not found on server.</p>';
+        return;
+      }
+
+      var blob = await response.blob();
+      var objectUrl = URL.createObjectURL(blob);
+      var ext = filename.split(".").pop().toLowerCase();
+      var heading = '<h3 style="margin:0 0 .75rem">' + CIDA_UTILS.escapeHtml(label) + '</h3>';
+
+      if (ext === "pdf") {
+        content.innerHTML = heading +
+          '<iframe src="' + objectUrl + '#toolbar=1" style="width:100%;height:72vh;border:none;border-radius:6px;background:#f4f4f5;"></iframe>';
+      } else if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
+        content.innerHTML = heading +
+          '<div style="text-align:center;overflow:auto;max-height:72vh;">' +
+          '<img src="' + objectUrl + '" style="max-width:100%;border-radius:6px;" alt="' + CIDA_UTILS.escapeHtml(label) + '">' +
+          '</div>';
+      } else {
+        content.innerHTML = heading +
+          '<p class="muted">Preview not available for this file type. <a href="' + objectUrl + '" download="' + CIDA_UTILS.escapeHtml(filename) + '">Download file</a></p>';
+      }
+    } catch (e) {
+      content.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 1rem;">Failed to load document.</p>';
     }
   }
 
