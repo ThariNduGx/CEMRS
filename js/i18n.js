@@ -275,6 +275,10 @@
       "owner.certificateIssued":   "සහතිකය නිකුත් කළ දිනය",
       "owner.validUntil":          "වලංගු කාලය",
       "owner.certificateStatement":"ඉදිකිරීම් කර්මාන්ත සංවර්ධන පනතේ ප්‍රතිපාදන යටතේ මෙහි විස්තර කළ යන්ත්‍රෝපකරණය නිසි ලෙස ලියාපදිංචි කර ඇති බව සහතික කෙරේ.",
+      "owner.appealValidation":    "ඉදිරිපත් කිරීමට පෙර අභියාචනා පණිවිඩයක් ඇතුළු කරන්න.",
+      "owner.appealExplanation":   "අභියාචනයේ විස්තරය",
+      "owner.appealPlaceholder":   "තීරණය නැවත සලකා බැලිය යුත්තේ ඇයිද යන්න පැහැදිලි කරන්න.",
+      "owner.noPopup":             "උත්පතන කවුළුව අවහිර කෙරිණි. PDF ලෙස මුද්‍රණය හෝ සුරැකීමට උත්පතන ඉඩ දෙන්න.",
 
       /* ── Login ── */
       "login.contractorPageTitle": "කොන්ත්‍රාත්කරු පිවිසීම",
@@ -284,9 +288,12 @@
       "login.password":            "මුරපදය",
 
       /* ── Feedback ── */
-      "feedback.loginSuccess":         "සාර්ථකව පිවිසිණි. යළි-යොමු කෙරෙමින්…",
-      "feedback.invalidLogin":         "ईमेल හෝ මුරපදය වලංගු නොවේ.",
-      "feedback.accountCreated":       "ගිණුම සාදන ලදී. හිමිකරු උපකරණ ලේඛනයට යළි-යොමු කෙරෙමින්…",
+      "feedback.loginSuccess":          "සාර්ථකව පිවිසිණි. යළි-යොමු කෙරෙමින්…",
+      "feedback.invalidLogin":          "ईमेल හෝ මුරපදය වලංගු නොවේ.",
+      "feedback.accountCreated":        "ගිණුම සාදන ලදී. හිමිකරු උපකරණ ලේඛනයට යළි-යොමු කෙරෙමින්…",
+      "feedback.completeRegistration":  "අවශ්‍ය ලියාපදිංචි ක්ෂේත්‍ර සම්පූර්ණ කරන්න.",
+      "feedback.passwordMismatch":      "මුරපද තහවුරුව නොගැලපේ.",
+      "feedback.passwordTooShort":      "මුරපදය අවම වශයෙන් අක්ෂර 8 ක් විය යුතුය.",
 
       /* ── Contractor ── */
       "dashboard.contractorTitle":     "කොන්ත්‍රාත්කරු උපකරණ ලේඛනය",
@@ -439,6 +446,11 @@
       "owner.certificateIssued":   "சான்றிதழ் வழங்கப்பட்ட தேதி",
       "owner.validUntil":          "செல்லுபடியாகும் வரை",
       "owner.certificateStatement":"கட்டுமான தொழில் மேம்பாட்டு சட்டத்தின் விதிகளின் கீழ் இங்கு விவரிக்கப்பட்ட இயந்திரம் முறையாக பதிவு செய்யப்பட்டதாக சான்றளிக்கிறோம்.",
+      "owner.appealValidation":    "சமர்ப்பிக்கும் முன் மேல்முறையீட்டு செய்தியை உள்ளிடவும்.",
+      "owner.appealExplanation":   "மேல்முறையீட்டு விளக்கம்",
+      "owner.appealPlaceholder":   "முடிவை மறுபரிசீலனை செய்ய வேண்டும் என்பதை விளக்குங்கள்.",
+      "owner.appealPending":       "மேல்முறையீடு நிலுவையில்",
+      "owner.noPopup":             "பாப்-அப் சாளரம் தடுக்கப்பட்டது. அச்சிட அல்லது PDF ஆக சேமிக்க பாப்-அப்களை அனுமதிக்கவும்.",
 
       /* ── Login ── */
       "login.contractorPageTitle": "ஒப்பந்தக்காரர் உள்நுழைவு",
@@ -448,9 +460,12 @@
       "login.password":            "கடவுச்சொல்",
 
       /* ── Feedback ── */
-      "feedback.loginSuccess":  "வெற்றிகரமாக உள்நுழைந்தீர்கள். திரும்பி அழைக்கப்படுகிறது…",
-      "feedback.invalidLogin":  "தவறான மின்னஞ்சல் அல்லது கடவுச்சொல்.",
-      "feedback.accountCreated":"கணக்கு உருவாக்கப்பட்டது. உரிமையாளர் டாஷ்போர்டுக்கு திரும்பி அழைக்கப்படுகிறது…",
+      "feedback.loginSuccess":          "வெற்றிகரமாக உள்நுழைந்தீர்கள். திரும்பி அழைக்கப்படுகிறது…",
+      "feedback.invalidLogin":          "தவறான மின்னஞ்சல் அல்லது கடவுச்சொல்.",
+      "feedback.accountCreated":        "கணக்கு உருவாக்கப்பட்டது. உரிமையாளர் டாஷ்போர்டுக்கு திரும்பி அழைக்கப்படுகிறது…",
+      "feedback.completeRegistration":  "தேவையான அனைத்து பதிவு புலங்களையும் நிரப்பவும்.",
+      "feedback.passwordMismatch":      "கடவுச்சொல் உறுதிப்படுத்தல் பொருந்தவில்லை.",
+      "feedback.passwordTooShort":      "கடவுச்சொல் குறைந்தது 8 எழுத்துக்கள் இருக்க வேண்டும்.",
 
       /* ── Contractor ── */
       "dashboard.contractorTitle":     "ஒப்பந்தக்காரர் டாஷ்போர்டு",

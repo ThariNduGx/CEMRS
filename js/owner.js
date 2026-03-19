@@ -239,6 +239,8 @@
 
     body.querySelectorAll(".js-renew").forEach(function (button) {
       button.addEventListener("click", async function () {
+        // #22 - Disable button immediately to prevent double-submission
+        button.disabled = true;
         await CIDA_DB.update("machinery", button.dataset.id, {
           status: "pending_renewal",
           renewalRequestedAt: Date.now(),

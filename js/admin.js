@@ -392,6 +392,7 @@
       modal.dataset.wired = "1";
       modal.querySelectorAll("[data-admin-close-doc-modal]").forEach(function (el) {
         el.addEventListener("click", function () {
+          modal.dispatchEvent(new Event("close-doc"));
           modal.hidden = true;
           document.body.classList.remove("modal-open");
         });
@@ -423,6 +424,13 @@
       var objectUrl = URL.createObjectURL(blob);
       var ext = filename.split(".").pop().toLowerCase();
       var heading = '<h3 style="margin:0 0 .75rem">' + CIDA_UTILS.escapeHtml(label) + '</h3>';
+
+      // #45 - Revoke the Object URL when the modal closes to free memory
+      function revokeOnClose() {
+        URL.revokeObjectURL(objectUrl);
+        modal.removeEventListener("close-doc", revokeOnClose);
+      }
+      modal.addEventListener("close-doc", revokeOnClose, { once: true });
 
       if (ext === "pdf") {
         content.innerHTML = heading +
@@ -623,7 +631,7 @@
 
       if(result.success) {
          CIDA_UTILS.setFeedback(feedbackEl, result.message, "success");
-         loadContractors();
+         await loadContractors();
       } else {
          CIDA_UTILS.setFeedback(feedbackEl, result.message, "error");
       }

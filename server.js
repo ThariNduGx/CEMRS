@@ -7,6 +7,8 @@ const fs = require('fs');
 const cors = require('cors');
 const multer = require('multer');
 const crypto = require('crypto');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = 8000;
@@ -25,18 +27,59 @@ const documentStorage = multer.diskStorage({
     }
 });
 
+const ALLOWED_MIMETYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp'];
+
 const documentUpload = multer({
     storage: documentStorage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB per file
     fileFilter: (req, file, cb) => {
-        const allowed = ['.pdf', '.jpg', '.jpeg', '.png'];
         const ext = path.extname(file.originalname).toLowerCase();
-        if (allowed.includes(ext)) cb(null, true);
-        else cb(new Error('Only PDF and image files are allowed.'));
+        // Validate both extension AND mimetype (#10 - MIME spoofing prevention)
+        if (ALLOWED_EXTENSIONS.includes(ext) && ALLOWED_MIMETYPES.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF and image files (JPG, PNG) are allowed.'));
+        }
     }
 });
 
-app.use(cors());
+// Rate limiter for document uploads — max 20 uploads per hour per IP (#12)
+const uploadRateLimit = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    message: { success: false, message: 'Too many uploads. Please try again later.' }
+});
+
+// Rate limiter for auth endpoints — max 20 attempts per 15 min per IP
+const authRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { success: false, message: 'Too many requests. Please try again later.' }
+});
+
+// #5 - Restrict CORS to same origin in production; allow localhost in dev
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : [`http://localhost:${8000}`, 'http://127.0.0.1:8000'];
+
+app.use(cors({
+    origin: (origin, cb) => {
+        // allow same-origin requests (no origin header) and whitelisted origins
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) cb(null, true);
+        else cb(new Error('Not allowed by CORS'));
+    },
+    credentials: true
+}));
+
+// #13 - Security headers via helmet
+app.use(helmet({
+    contentSecurityPolicy: false, // disabled to avoid breaking inline scripts/styles in the prototype
+    crossOriginEmbedderPolicy: false
+}));
+
+// #46 - Support form-urlencoded bodies
+app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
@@ -81,6 +124,23 @@ function authorize(...roles) {
         }
         next();
     };
+}
+
+// #3 - Re-check contractor status on every protected contractor request
+async function requireActiveContractor(req, res, next) {
+    if (req.user.role !== 'contractor') return next();
+    try {
+        const [rows] = await pool.execute(
+            'SELECT status FROM contractors WHERE user_id = ? LIMIT 1',
+            [req.user.userId]
+        );
+        if (!rows.length || rows[0].status !== 'approved') {
+            return res.status(403).json({ success: false, message: 'Contractor account is not active.' });
+        }
+        next();
+    } catch (e) {
+        return res.status(500).json({ success: false, message: 'Database error occurred.' });
+    }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -393,6 +453,18 @@ async function seedDatabase(conn) {
             await conn.execute('ALTER TABLE maintenance ADD CONSTRAINT fk_maintenance_owner FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL');
         } catch (e) { /* constraint already exists or column missing */ }
 
+        // #9 - Make contractors.user_id NOT NULL after ensuring all rows have a value
+        try {
+            await conn.execute('UPDATE contractors SET user_id = CONCAT("c_legacy_", id) WHERE user_id IS NULL');
+            await conn.execute('ALTER TABLE contractors MODIFY COLUMN user_id VARCHAR(50) NOT NULL');
+        } catch (e) { /* already NOT NULL */ }
+
+        // #19 - Add indexes on FK columns for query performance
+        try { await conn.execute('ALTER TABLE machinery ADD INDEX idx_machinery_owner_id (owner_id)'); } catch (e) {}
+        try { await conn.execute('ALTER TABLE rentals ADD INDEX idx_rentals_contractor_id (contractor_id)'); } catch (e) {}
+        try { await conn.execute('ALTER TABLE maintenance ADD INDEX idx_maintenance_owner_id (owner_id)'); } catch (e) {}
+        try { await conn.execute('ALTER TABLE contractors ADD INDEX idx_contractors_user_id (user_id)'); } catch (e) {}
+
         await seedDatabase(conn);
         conn.release();
         console.log('Database tables ready.');
@@ -406,7 +478,7 @@ async function seedDatabase(conn) {
 // ─── Users API ────────────────────────────────────────────────────────────────
 
 // POST /api/users/login  (public)
-app.post('/api/users/login', async (req, res) => {
+app.post('/api/users/login', authRateLimit, async (req, res) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {
@@ -437,7 +509,7 @@ app.post('/api/users/login', async (req, res) => {
         res.json({ success: true, data: mapUser(user), token });
     } catch (err) {
         console.error('Login error:', err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -447,6 +519,12 @@ app.post('/api/users/register', async (req, res) => {
         const { name, companyName, email, password, contactDetails, address } = req.body;
         if (!name || !email || !password) {
             return res.json({ success: false, message: 'Name, email, and password are required.' });
+        }
+
+        // #31 - Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            return res.json({ success: false, message: 'Invalid email format.' });
         }
 
         const [existing] = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [email.trim().toLowerCase()]);
@@ -467,7 +545,7 @@ app.post('/api/users/register', async (req, res) => {
         res.json({ success: true, data: mapUser(newUser), token });
     } catch (err) {
         console.error('Register error:', err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -478,7 +556,7 @@ app.get('/api/users', authenticate, authorize('admin', 'director_general'), asyn
         res.json({ success: true, data: rows.map(mapUser) });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -490,7 +568,7 @@ app.get('/api/users/:id', authenticate, async (req, res) => {
         res.json({ success: true, data: mapUser(rows[0]) });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -526,7 +604,7 @@ app.get('/api/machinery', optionalAuthenticate, async (req, res) => {
         res.json({ success: true, data: rows.map(mapMachinery) });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -542,7 +620,7 @@ app.get('/api/machinery/expiring', authenticate, authorize('admin', 'director_ge
         res.json({ success: true, data: rows.map(mapMachinery) });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -557,11 +635,15 @@ app.get('/api/machinery/:id', authenticate, authorize('admin', 'director_general
         if (req.user.role === 'owner' && machine.ownerId !== req.user.userId) {
             return res.status(403).json({ success: false, message: 'Access denied.' });
         }
+        // #1 - Contractor can only view approved machines
+        if (req.user.role === 'contractor' && machine.status !== 'approved') {
+            return res.status(403).json({ success: false, message: 'Access denied.' });
+        }
 
         res.json({ success: true, data: machine });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -569,6 +651,13 @@ app.get('/api/machinery/:id', authenticate, authorize('admin', 'director_general
 app.post('/api/machinery', authenticate, authorize('owner'), async (req, res) => {
     try {
         const m = req.body;
+
+        // #26 - Validate machinery type code
+        const VALID_TYPES = new Set(['EX','BHL','WL','BDZ','MG','RLR','CRN','TMC','FN','CNM','CBP','CPM','ASP-Cr','ASP-M','CPR','WTR','DMP','LBT','PIL','CMP','GEN','BLN','TWR']);
+        if (!m.type || !VALID_TYPES.has(m.type)) {
+            return res.status(400).json({ success: false, message: 'Invalid or missing machinery type.' });
+        }
+
         const id = generateId('m');
         await pool.execute(
             `INSERT INTO machinery (id, owner_id, type, make_model, country_of_origin, location, status,
@@ -586,7 +675,7 @@ app.post('/api/machinery', authenticate, authorize('owner'), async (req, res) =>
         res.json({ success: true, data: mapMachinery(row) });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -624,8 +713,14 @@ app.patch('/api/machinery/:id', authenticate, authorize('admin', 'director_gener
             }
         }
 
-        // ── Director General: unrestricted on allowed machinery fields ───────
-        // (DG sets approved, rejected, revoked, registrationNumber, expiry, etc.)
+        // ── Director General: may only set specific status values ────────────
+        // (DG sets approved, rejected, revoked, or pending for accepted appeals)
+        if (req.user.role === 'director_general' && req.body.status) {
+            const DG_ALLOWED_STATUSES = new Set(['approved', 'rejected', 'revoked', 'pending']);
+            if (!DG_ALLOWED_STATUSES.has(req.body.status)) {
+                return res.status(403).json({ success: false, message: 'Invalid status transition for Director General.' });
+            }
+        }
 
         const { setClauses, params } = buildPatchQuery('machinery', machineryFieldMap, req.body);
         if (!setClauses.length) return res.json({ success: false, message: 'No fields to update.' });
@@ -636,7 +731,7 @@ app.patch('/api/machinery/:id', authenticate, authorize('admin', 'director_gener
         res.json({ success: true, data: row ? mapMachinery(row) : null });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -661,7 +756,7 @@ app.get('/api/maintenance', authenticate, authorize('admin', 'owner'), async (re
         res.json({ success: true, data: rows.map(mapMaintenance) });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -671,6 +766,17 @@ app.post('/api/maintenance', authenticate, authorize('admin', 'owner'), async (r
         const mt = req.body;
         const id = generateId('mt');
         const ownerId = req.user.role === 'owner' ? req.user.userId : (mt.ownerId || null);
+
+        // #8 - Validate that the equipment belongs to the owner (owner role only)
+        if (req.user.role === 'owner' && mt.equipmentId) {
+            const [eqRows] = await pool.execute(
+                'SELECT id FROM machinery WHERE owner_id = ? AND (id = ? OR registration_number = ?) LIMIT 1',
+                [req.user.userId, mt.equipmentId, mt.equipmentId]
+            );
+            if (!eqRows.length) {
+                return res.status(403).json({ success: false, message: 'Equipment does not belong to this owner.' });
+            }
+        }
 
         await pool.execute(
             `INSERT INTO maintenance (id, owner_id, equipment_id, equipment_name, maintenance_date, status, maintenance_type, location, site, documents, created_at)
@@ -686,7 +792,7 @@ app.post('/api/maintenance', authenticate, authorize('admin', 'owner'), async (r
         res.json({ success: true, data: mapMaintenance(row) });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -702,7 +808,7 @@ app.patch('/api/maintenance/:id', authenticate, authorize('admin'), async (req, 
         res.json({ success: true, data: row ? mapMaintenance(row) : null });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -734,7 +840,7 @@ app.get('/api/stats', authenticate, authorize('admin', 'director_general'), asyn
         });
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -743,47 +849,72 @@ app.get('/api/stats', authenticate, authorize('admin', 'director_general'), asyn
 // POST /api/register_contractor.php  (public)
 // Priority 2: Also creates a users record so contractor is a specialization of User
 app.post('/api/register_contractor.php', async (req, res) => {
+    const conn = await pool.getConnection();
     try {
         const { full_name, company_name, cida_number, email, password, contact_details } = req.body;
 
         if (!full_name || !company_name || !cida_number || !email || !password || !contact_details) {
+            conn.release();
             return res.json({ success: false, message: 'Incomplete data provided.' });
         }
         if (password.length < 8) {
+            conn.release();
             return res.json({ success: false, message: 'Password must be at least 8 characters.' });
         }
 
+        // #31 - Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            conn.release();
+            return res.json({ success: false, message: 'Invalid email format.' });
+        }
+
+        // #32 - Validate CIDA number format (e.g. CIDA/C/1234)
+        const cidaRegex = /^CIDA\/[A-Za-z]\/\d+$/;
+        if (!cidaRegex.test(cida_number.trim())) {
+            conn.release();
+            return res.json({ success: false, message: 'Invalid CIDA number format. Expected format: CIDA/C/1234' });
+        }
+
         // Check both tables for duplicate email
-        const [existingContractor] = await pool.execute('SELECT id FROM contractors WHERE email = ? LIMIT 1', [email]);
-        const [existingUser]       = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [email.trim().toLowerCase()]);
+        const [existingContractor] = await conn.execute('SELECT id FROM contractors WHERE email = ? LIMIT 1', [email]);
+        const [existingUser]       = await conn.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [email.trim().toLowerCase()]);
         if (existingContractor.length || existingUser.length) {
+            conn.release();
             return res.json({ success: false, message: 'An account already exists for this email.' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const userId = generateId('c');
 
+        // #4 - Wrap dual INSERT in a transaction to ensure atomicity
+        await conn.beginTransaction();
+
         // Create users record (contractor specialization — Priority 2)
-        await pool.execute(
+        await conn.execute(
             'INSERT INTO users (id, name, company_name, email, password, role, contact_details, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [userId, full_name, company_name, email.trim().toLowerCase(), hashedPassword, 'contractor', contact_details, '']
         );
 
         // Create contractors record with FK to users
-        await pool.execute(
+        await conn.execute(
             'INSERT INTO contractors (user_id, full_name, company_name, cida_number, email, password, contact_details) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [userId, full_name, company_name, cida_number, email, hashedPassword, contact_details]
         );
 
+        await conn.commit();
+        conn.release();
         res.json({ success: true, message: 'Registration successful. Please wait for CIDA admin approval.' });
     } catch (error) {
+        await conn.rollback().catch(() => {});
+        conn.release();
         console.error('Contractor registration error:', error);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
 // POST /api/login_contractor.php  (public — returns JWT using users.id)
-app.post('/api/login_contractor.php', async (req, res) => {
+app.post('/api/login_contractor.php', authRateLimit, async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -836,7 +967,7 @@ app.post('/api/login_contractor.php', async (req, res) => {
         });
     } catch (error) {
         console.error('Contractor login error:', error);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -864,14 +995,14 @@ app.all('/api/admin_contractors.php', authenticate, authorize('admin'), async (r
         }
     } catch (error) {
         console.error('Admin contractors API error:', error);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
 // ─── Rentals API ──────────────────────────────────────────────────────────────
 
 // GET/POST /api/rentals.php  (admin sees all; contractor sees own + can create)
-app.all('/api/rentals.php', authenticate, authorize('admin', 'contractor'), async (req, res) => {
+app.all('/api/rentals.php', authenticate, authorize('admin', 'contractor'), requireActiveContractor, async (req, res) => {
     try {
         if (req.method === 'GET') {
             let query, params = [];
@@ -915,7 +1046,7 @@ app.all('/api/rentals.php', authenticate, authorize('admin', 'contractor'), asyn
         }
     } catch (error) {
         console.error('Rentals API error:', error);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
@@ -931,14 +1062,14 @@ app.patch('/api/rentals/:id', authenticate, authorize('admin'), async (req, res)
         res.json({ success: true, message: 'Rental status updated.' });
     } catch (error) {
         console.error('Rental PATCH error:', error);
-        res.json({ success: false, message: 'Database error occurred.' });
+        res.status(500).json({ success: false, message: 'Database error occurred.' });
     }
 });
 
 // ─── Document upload / serve ──────────────────────────────────────────────────
 
 // POST /api/documents  (owners only — upload one file per call)
-app.post('/api/documents', authenticate, authorize('owner'), documentUpload.single('file'), (req, res) => {
+app.post('/api/documents', authenticate, authorize('owner'), uploadRateLimit, documentUpload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ success: false, message: 'No file uploaded or file type not allowed.' });
     }

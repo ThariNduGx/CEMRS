@@ -145,6 +145,11 @@
       var ext = filename.split(".").pop().toLowerCase();
       var heading = '<h3 style="margin:0 0 .75rem">' + CIDA_UTILS.escapeHtml(label) + '</h3>';
 
+      // #44 - Revoke the Object URL when the modal closes to free memory
+      modal.addEventListener("close-doc", function () {
+        URL.revokeObjectURL(objectUrl);
+      }, { once: true });
+
       if (ext === "pdf") {
         content.innerHTML = heading +
           '<iframe src="' + objectUrl + '#toolbar=1" style="width:100%;height:72vh;border:none;border-radius:6px;background:#f4f4f5;"></iframe>';
@@ -549,7 +554,9 @@
 
     document.querySelectorAll("[data-dg-close-modal]").forEach(function (button) {
       button.addEventListener("click", function () {
-        closeModal(document.getElementById("dg-document-modal"));
+        var dgModal = document.getElementById("dg-document-modal");
+        if (dgModal) dgModal.dispatchEvent(new Event("close-doc"));
+        closeModal(dgModal);
       });
     });
   }
