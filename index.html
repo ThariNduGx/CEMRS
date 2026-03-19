@@ -83,6 +83,25 @@
 
   <script src="js/db.js"></script>
   <script src="js/migration.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/public.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var langBar = document.createElement("div");
+      langBar.className = "lang-toggle";
+      langBar.style.cssText = "display:flex;gap:.25rem;align-items:center;";
+      langBar.innerHTML = '<button class="button button--ghost lang-btn" data-lang="en">EN</button>' +
+        '<button class="button button--ghost lang-btn" data-lang="si">සිං</button>' +
+        '<button class="button button--ghost lang-btn" data-lang="ta">தமிழ்</button>';
+      document.querySelector(".topbar__actions").prepend(langBar);
+      langBar.querySelectorAll(".lang-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (typeof CIDA_I18N !== "undefined") {
+            CIDA_I18N.setLang(this.dataset.lang);
+          }
+        });
+      });
+    });
+  </script>
 </body>
 </html>

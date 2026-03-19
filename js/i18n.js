@@ -127,7 +127,71 @@
       "table.machineReg":              "Machinery Reg No",
       "table.type":                    "Type",
       "table.duration":                "Rental Duration",
-      "table.status":                  "Status"
+      "table.status":                  "Status",
+
+      /* ── Owner login page ── */
+      "login.pageTitle":               "CIDA Login",
+      "login.access":                  "CIDA Access",
+      "login.title":                   "Login",
+      "login.intro":                   "Use the seeded accounts or an owner account you register here.",
+      "login.seededAccounts":          "Seeded Accounts",
+      "login.adminLabel":              "Admin",
+      "login.ownerLabel":              "Owner",
+
+      /* ── Owner registration ── */
+      "register.pageTitle":            "Owner Registration",
+      "register.onboarding":           "Owner Onboarding",
+      "register.title":                "Create Machinery Owner Account",
+      "register.intro":                "Register as a machinery owner to manage submissions, renewals, and account details.",
+      "register.fullName":             "Full Name",
+      "register.fullNamePlaceholder":  "Enter your full name",
+      "register.companyName":          "Business / Company Name",
+      "register.companyNamePlaceholder": "Registered company name",
+      "register.email":                "Email",
+      "register.emailPlaceholder":     "owner@example.com",
+      "register.contactNumber":        "Contact Number",
+      "register.contactPlaceholder":   "0771234567",
+      "register.password":             "Password",
+      "register.passwordPlaceholder":  "Minimum 8 characters",
+      "register.confirmPassword":      "Confirm Password",
+      "register.confirmPasswordPlaceholder": "Re-enter your password",
+      "register.address":              "Address",
+      "register.addressPlaceholder":   "Business or mailing address",
+      "register.agreement":            "I confirm that the information provided is accurate and can be used for CIDA machinery registration records.",
+      "register.submit":               "Register Account",
+
+      /* ── Contractor registration ── */
+      "register.contractorPageTitle":  "Contractor Registration",
+      "register.contractorOnboarding": "Contractor Onboarding",
+      "register.contractorTitle":      "Create Contractor Account",
+      "register.contractorIntro":      "Register as a contractor to search for available machinery and request rentals.",
+      "register.cidaNumber":           "CIDA Registration Number",
+      "register.cidaPlaceholder":      "e.g. CIDA/C/1234",
+      "register.agreementContractor":  "I confirm that I am an authorized representative of the registered company.",
+      "register.submitContractor":     "Register Account",
+
+      /* ── Shared navigation links ── */
+      "common.createOwnerAccount":     "Create owner account",
+      "common.alreadyHaveAccount":     "Already have an account?",
+      "common.returnToPublicRegister": "Return to public register",
+
+      /* ── Public register page ── */
+      "public.pageTitle":              "CIDA Machinery Register",
+      "public.access":                 "Public Access",
+      "public.title":                  "CIDA Machinery Register",
+      "public.heroTitle":              "Search the Approved Register",
+      "public.heroText":               "Find verified construction equipment and machinery maintained under the central CIDA registration process.",
+      "public.thirdSchedule":          "Third Schedule View",
+      "public.approvedRegister":       "Approved Register",
+      "public.ownerAddress":           "Name / Address of Owner",
+      "public.ownerPlaceholder":       "Search owner or address",
+      "public.machineryType":          "Machinery Type",
+      "public.typePlaceholder":        "Wheel Loader, Excavator…",
+      "public.locationPlaceholder":    "Colombo, Kandy…",
+      "public.registrationPlaceholder":"CIDA-WL-2026-001",
+      "public.typeOfMachinery":        "Type of Machinery",
+      "public.countryOfOrigin":        "Country of Origin",
+      "public.registrationDates":      "Registration Dates"
     },
 
     si: {
@@ -230,7 +294,73 @@
       "nav.myRentals":                 "මගේ කුලී ඉල්ලීම්",
       "role.contractor":               "ලියාපදිංචි කොන්ත්‍රාත්කරු",
       "contractor.availableMachinery": "කුලී සඳහා ලබා ගත හැකි යන්ත්‍රෝපකරණ",
-      "contractor.myRentals":          "මගේ කුලී ඉල්ලීම්"
+      "contractor.myRentals":          "මගේ කුලී ඉල්ලීම්",
+
+      /* ── Owner login page ── */
+      "login.pageTitle":               "CIDA පිවිසීම",
+      "login.access":                  "CIDA ප්‍රවේශය",
+      "login.title":                   "පිවිසෙන්න",
+      "login.intro":                   "බීජ ගිණුම් හෝ ලියාපදිංචි හිමිකරු ගිණුමක් භාවිතා කරන්න.",
+      "login.seededAccounts":          "බීජ ගිණුම්",
+      "login.adminLabel":              "පරිපාලක",
+      "login.ownerLabel":              "හිමිකරු",
+      "login.emailPlaceholder":        "admin@cida.gov.lk",
+      "login.passwordPlaceholder":     "මුරපදය ඇතුළු කරන්න",
+
+      /* ── Owner registration ── */
+      "register.pageTitle":            "හිමිකරු ලියාපදිංචිය",
+      "register.onboarding":           "හිමිකරු ඇතුළත් කිරීම",
+      "register.title":                "යන්ත්‍රෝපකරණ හිමිකරු ගිණුම සාදන්න",
+      "register.intro":                "ඉදිරිපත් කිරීම්, අලුත් කිරීම් සහ ගිණුම් විස්තර කළමනාකරණය සඳහා ලියාපදිංචි වන්න.",
+      "register.fullName":             "සම්පූර්ණ නම",
+      "register.fullNamePlaceholder":  "ඔබේ සම්පූර්ණ නම ඇතුළු කරන්න",
+      "register.companyName":          "ව්‍යාපාර / සමාගම් නම",
+      "register.companyNamePlaceholder": "ලියාපදිංචි සමාගම් නම",
+      "register.email":                "විද්‍යුත් තැපෑල",
+      "register.emailPlaceholder":     "owner@example.com",
+      "register.contactNumber":        "සම්බන්ධතා අංකය",
+      "register.contactPlaceholder":   "0771234567",
+      "register.password":             "මුරපදය",
+      "register.passwordPlaceholder":  "අවම අක්ෂර 8",
+      "register.confirmPassword":      "මුරපදය තහවුරු කරන්න",
+      "register.confirmPasswordPlaceholder": "මුරපදය නැවත ඇතුළු කරන්න",
+      "register.address":              "ලිපිනය",
+      "register.addressPlaceholder":   "ව්‍යාපාරික හෝ තැපැල් ලිපිනය",
+      "register.agreement":            "ලබා දී ඇති තොරතුරු නිවැරදි බව සහ CIDA ලියාපදිංචි වාර්තා සඳහා භාවිතා කළ හැකි බව තහවුරු කරමි.",
+      "register.submit":               "ගිණුම ලියාපදිංචි කරන්න",
+
+      /* ── Contractor registration ── */
+      "register.contractorPageTitle":  "කොන්ත්‍රාත්කරු ලියාපදිංචිය",
+      "register.contractorOnboarding": "කොන්ත්‍රාත්කරු ඇතුළත් කිරීම",
+      "register.contractorTitle":      "කොන්ත්‍රාත්කරු ගිණුමක් සාදන්න",
+      "register.contractorIntro":      "ලබා ගත හැකි යන්ත්‍රෝපකරණ සෙවීමට සහ කුලී ඉල්ලීම් ඉදිරිපත් කිරීමට ලියාපදිංචි වන්න.",
+      "register.cidaNumber":           "CIDA ලියාපදිංචි අංකය",
+      "register.cidaPlaceholder":      "e.g. CIDA/C/1234",
+      "register.agreementContractor":  "ලියාපදිංචි සමාගමේ අනුමත නියෝජිතයකු බව තහවුරු කරමි.",
+      "register.submitContractor":     "ගිණුම ලියාපදිංචි කරන්න",
+
+      /* ── Shared navigation links ── */
+      "common.createOwnerAccount":     "හිමිකරු ගිණුමක් සාදන්න",
+      "common.alreadyHaveAccount":     "දැනටමත් ගිණුමක් තිබේද?",
+      "common.returnToPublicRegister": "පොදු ලේඛනයට ආපසු",
+
+      /* ── Public register page ── */
+      "public.pageTitle":              "CIDA යන්ත්‍රෝපකරණ ලේඛනය",
+      "public.access":                 "පොදු ප්‍රවේශය",
+      "public.title":                  "CIDA යන්ත්‍රෝපකරණ ලේඛනය",
+      "public.heroTitle":              "අනුමත ලේඛනය සොයන්න",
+      "public.heroText":               "CIDA ලියාපදිංචි ක්‍රියාවලිය යටතේ නඩත්තු කරන ලද තහවුරු ඉදිකිරීම් උපකරණ සහ යන්ත්‍රෝපකරණ සොයා ගන්න.",
+      "public.thirdSchedule":          "තෙවැනි උපලේඛනය",
+      "public.approvedRegister":       "අනුමත ලේඛනය",
+      "public.ownerAddress":           "හිමිකරුගේ නම / ලිපිනය",
+      "public.ownerPlaceholder":       "හිමිකරු හෝ ලිපිනය සොයන්න",
+      "public.machineryType":          "යන්ත්‍රෝපකරණ වර්ගය",
+      "public.typePlaceholder":        "රෝද පූකරය, කැණීම් යන්ත්‍රය…",
+      "public.locationPlaceholder":    "කොළඹ, මහනුවර…",
+      "public.registrationPlaceholder":"CIDA-WL-2026-001",
+      "public.typeOfMachinery":        "යන්ත්‍රෝපකරණ වර්ගය",
+      "public.countryOfOrigin":        "නිෂ්පාදන රට",
+      "public.registrationDates":      "ලියාපදිංචි දිනයන්"
     },
 
     ta: {
@@ -328,7 +458,73 @@
       "nav.myRentals":                 "என் வாடகை கோரிக்கைகள்",
       "role.contractor":               "பதிவு செய்யப்பட்ட ஒப்பந்தக்காரர்",
       "contractor.availableMachinery": "வாடகைக்கு கிடைக்கக்கூடிய இயந்திரங்கள்",
-      "contractor.myRentals":          "என் வாடகை கோரிக்கைகள்"
+      "contractor.myRentals":          "என் வாடகை கோரிக்கைகள்",
+
+      /* ── Owner login page ── */
+      "login.pageTitle":               "CIDA உள்நுழைவு",
+      "login.access":                  "CIDA அணுகல்",
+      "login.title":                   "உள்நுழை",
+      "login.intro":                   "விதைக்கப்பட்ட கணக்குகள் அல்லது நீங்கள் பதிவு செய்த உரிமையாளர் கணக்கை பயன்படுத்தவும்.",
+      "login.seededAccounts":          "விதைக்கப்பட்ட கணக்குகள்",
+      "login.adminLabel":              "நிர்வாகி",
+      "login.ownerLabel":              "உரிமையாளர்",
+      "login.emailPlaceholder":        "admin@cida.gov.lk",
+      "login.passwordPlaceholder":     "கடவுச்சொல்லை உள்ளிடவும்",
+
+      /* ── Owner registration ── */
+      "register.pageTitle":            "உரிமையாளர் பதிவு",
+      "register.onboarding":           "உரிமையாளர் இணைப்பு",
+      "register.title":                "இயந்திர உரிமையாளர் கணக்கை உருவாக்கு",
+      "register.intro":                "சமர்ப்பிப்புகள், புதுப்பித்தல்கள் மற்றும் கணக்கு விவரங்களை நிர்வகிக்க பதிவு செய்யவும்.",
+      "register.fullName":             "முழு பெயர்",
+      "register.fullNamePlaceholder":  "உங்கள் முழு பெயரை உள்ளிடவும்",
+      "register.companyName":          "வணிக / நிறுவனப் பெயர்",
+      "register.companyNamePlaceholder": "பதிவு செய்யப்பட்ட நிறுவனப் பெயர்",
+      "register.email":                "மின்னஞ்சல்",
+      "register.emailPlaceholder":     "owner@example.com",
+      "register.contactNumber":        "தொடர்பு எண்",
+      "register.contactPlaceholder":   "0771234567",
+      "register.password":             "கடவுச்சொல்",
+      "register.passwordPlaceholder":  "குறைந்தது 8 எழுத்துக்கள்",
+      "register.confirmPassword":      "கடவுச்சொல்லை உறுதிப்படுத்தவும்",
+      "register.confirmPasswordPlaceholder": "கடவுச்சொல்லை மீண்டும் உள்ளிடவும்",
+      "register.address":              "முகவரி",
+      "register.addressPlaceholder":   "வணிக அல்லது அஞ்சல் முகவரி",
+      "register.agreement":            "வழங்கப்பட்ட தகவல் சரியானது மற்றும் CIDA இயந்திரப் பதிவு பதிவுகளுக்கு பயன்படுத்தலாம் என்று உறுதிப்படுத்துகிறேன்.",
+      "register.submit":               "கணக்கை பதிவு செய்யவும்",
+
+      /* ── Contractor registration ── */
+      "register.contractorPageTitle":  "ஒப்பந்தக்காரர் பதிவு",
+      "register.contractorOnboarding": "ஒப்பந்தக்காரர் இணைப்பு",
+      "register.contractorTitle":      "ஒப்பந்தக்காரர் கணக்கை உருவாக்கு",
+      "register.contractorIntro":      "கிடைக்கக்கூடிய இயந்திரங்களை தேட மற்றும் வாடகை கோரிக்கைகளை சமர்ப்பிக்க பதிவு செய்யவும்.",
+      "register.cidaNumber":           "CIDA பதிவு எண்",
+      "register.cidaPlaceholder":      "எ.கா. CIDA/C/1234",
+      "register.agreementContractor":  "பதிவு செய்யப்பட்ட நிறுவனத்தின் அங்கீகரிக்கப்பட்ட பிரதிநிதி என்று உறுதிப்படுத்துகிறேன்.",
+      "register.submitContractor":     "கணக்கை பதிவு செய்யவும்",
+
+      /* ── Shared navigation links ── */
+      "common.createOwnerAccount":     "உரிமையாளர் கணக்கை உருவாக்கு",
+      "common.alreadyHaveAccount":     "ஏற்கனவே கணக்கு உள்ளதா?",
+      "common.returnToPublicRegister": "பொது பதிவேட்டிற்கு திரும்பு",
+
+      /* ── Public register page ── */
+      "public.pageTitle":              "CIDA இயந்திர பதிவேடு",
+      "public.access":                 "பொது அணுகல்",
+      "public.title":                  "CIDA இயந்திர பதிவேடு",
+      "public.heroTitle":              "அங்கீகரிக்கப்பட்ட பதிவேட்டை தேடுங்கள்",
+      "public.heroText":               "மத்திய CIDA பதிவு செயல்முறையின் கீழ் பராமரிக்கப்படும் சரிபார்க்கப்பட்ட கட்டுமான உபகரணங்கள் மற்றும் இயந்திரங்களை கண்டறியுங்கள்.",
+      "public.thirdSchedule":          "மூன்றாம் அட்டவணை",
+      "public.approvedRegister":       "அங்கீகரிக்கப்பட்ட பதிவேடு",
+      "public.ownerAddress":           "உரிமையாளரின் பெயர் / முகவரி",
+      "public.ownerPlaceholder":       "உரிமையாளர் அல்லது முகவரியை தேடவும்",
+      "public.machineryType":          "இயந்திர வகை",
+      "public.typePlaceholder":        "சக்கர ஏற்றி, தோண்டும் இயந்திரம்…",
+      "public.locationPlaceholder":    "கொழும்பு, கண்டி…",
+      "public.registrationPlaceholder":"CIDA-WL-2026-001",
+      "public.typeOfMachinery":        "இயந்திர வகை",
+      "public.countryOfOrigin":        "தயாரிப்பு நாடு",
+      "public.registrationDates":      "பதிவு தேதிகள்"
     }
   };
 

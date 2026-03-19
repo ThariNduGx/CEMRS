@@ -2,6 +2,16 @@
   var SETTINGS_KEY = "cida_maintenance_settings";
   var DAY = 1000 * 60 * 60 * 24;
 
+  function authHeaders(includeContentType) {
+    var h = {};
+    try {
+      var session = JSON.parse(sessionStorage.getItem("cida_session") || "null");
+      if (session && session.token) h["Authorization"] = "Bearer " + session.token;
+    } catch (e) {}
+    if (includeContentType) h["Content-Type"] = "application/json";
+    return h;
+  }
+
   function readSettings() {
     try {
       return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {
@@ -195,6 +205,7 @@
   }
 
   var adminStatusChart = null;
+  var _usersMapCache = null;
 
   async function renderRegistrationSummary() {
     try {
@@ -228,6 +239,10 @@
             borderColor: "#fff"
           }]
         };
+        if (!adminStatusChart) {
+          var _existing = Chart.getChart(canvas);
+          if (_existing) { _existing.destroy(); }
+        }
         if (adminStatusChart) {
           adminStatusChart.data = chartData;
           adminStatusChart.update();
@@ -264,12 +279,16 @@
         return;
       }
 
-      var users = await CIDA_DB.getData("users");
-      var usersMap = users.reduce(function (acc, u) { acc[u.id] = u; return acc; }, {});
+      if (!_usersMapCache) {
+        var users = await CIDA_DB.getData("users");
+        _usersMapCache = users.reduce(function (acc, u) { acc[u.id] = u; return acc; }, {});
+      }
+      var usersMap = _usersMapCache;
 
       list.innerHTML = expiring.map(function (m) {
         var owner = usersMap[m.ownerId] || { name: "Unknown" };
-        var daysLeft = Math.ceil((m.expiryDate - Date.now()) / DAY);
+        var daysLeft = m.expiryDate ? Math.ceil((m.expiryDate - Date.now()) / DAY) : null;
+        if (daysLeft === null) return "";
         var tone = daysLeft <= 7 ? "color: var(--danger);" : "color: var(--warning);";
         return "<li style='display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);'>" +
           "<span><strong>" + CIDA_UTILS.escapeHtml(m.registrationNumber || "-") + "</strong> &mdash; " +
@@ -441,7 +460,7 @@
     if (!tbody) return;
 
     try {
-      var response = await fetch('api/admin_contractors.php');
+      var response = await fetch('api/admin_contractors.php', { headers: authHeaders(false) });
       var result = await response.json();
 
       if (result.success) {
@@ -499,7 +518,7 @@
     try {
       var response = await fetch('api/admin_contractors.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(true),
         body: JSON.stringify({ contractor_id: id, action: action })
       });
 
@@ -522,7 +541,7 @@
     if (!tbody) return;
 
     try {
-      var response = await fetch("api/rentals.php");
+      var response = await fetch("api/rentals.php", { headers: authHeaders(false) });
       var result = await response.json();
 
       if (!result.success) {
@@ -585,7 +604,7 @@
     try {
       var response = await fetch("api/rentals/" + id, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(true),
         body: JSON.stringify({ status: status })
       });
       var result = await response.json();

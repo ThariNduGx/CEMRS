@@ -388,6 +388,10 @@
           borderColor: "#fff"
         }]
       };
+      if (!dgStatusChart) {
+        var _dgExisting = Chart.getChart(canvas);
+        if (_dgExisting) { _dgExisting.destroy(); }
+      }
       if (dgStatusChart) {
         dgStatusChart.data = chartData;
         dgStatusChart.update();
@@ -522,7 +526,9 @@
 
   async function renderRegistrationSummary() {
     try {
-      var res = await fetch("/api/stats");
+      var _dgSession = JSON.parse(sessionStorage.getItem("cida_session") || "null");
+      var _dgToken = _dgSession && _dgSession.token ? _dgSession.token : "";
+      var res = await fetch("/api/stats", { headers: _dgToken ? { "Authorization": "Bearer " + _dgToken } : {} });
       var result = await res.json();
       if (!result.success) return;
       var s = result.data;
