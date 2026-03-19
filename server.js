@@ -39,6 +39,15 @@ function authenticate(req, res, next) {
     }
 }
 
+// Like authenticate, but does not block unauthenticated requests — req.user is set only when a valid token is present
+function optionalAuthenticate(req, res, next) {
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith('Bearer ')) {
+        try { req.user = jwt.verify(auth.slice(7), JWT_SECRET); } catch (e) { /* ignore invalid token */ }
+    }
+    next();
+}
+
 function authorize(...roles) {
     return (req, res, next) => {
         if (!roles.includes(req.user.role)) {
@@ -462,20 +471,23 @@ app.get('/api/users/:id', authenticate, async (req, res) => {
 // ─── Machinery API ────────────────────────────────────────────────────────────
 
 // GET /api/machinery
-// - admin / director_general: see all (optional ?ownerId filter)
-// - owner: sees only their own machinery
-// - contractor: sees only approved machinery
-app.get('/api/machinery', authenticate, authorize('admin', 'director_general', 'owner', 'contractor'), async (req, res) => {
+// - public (no token): approved records only  ← public register
+// - owner: their own machinery only
+// - contractor: approved machinery only
+// - admin / director_general: all records (optional ?ownerId filter)
+app.get('/api/machinery', optionalAuthenticate, async (req, res) => {
     try {
         let query, params = [];
+        const role = req.user ? req.user.role : null;
 
-        if (req.user.role === 'owner') {
+        if (!role || role === 'contractor') {
+            // Public or contractor — approved only
+            query = 'SELECT * FROM machinery WHERE status = "approved" ORDER BY submitted_at DESC';
+        } else if (role === 'owner') {
             query = 'SELECT * FROM machinery WHERE owner_id = ? ORDER BY submitted_at DESC';
             params = [req.user.userId];
-        } else if (req.user.role === 'contractor') {
-            query = 'SELECT * FROM machinery WHERE status = "approved" ORDER BY submitted_at DESC';
         } else {
-            // admin / director_general
+            // admin / director_general — all records
             if (req.query.ownerId) {
                 query = 'SELECT * FROM machinery WHERE owner_id = ? ORDER BY submitted_at DESC';
                 params = [req.query.ownerId];
