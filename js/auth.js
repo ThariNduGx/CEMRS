@@ -3,6 +3,18 @@
     return CIDA_UTILS.getText(key, fallback, replacements);
   }
 
+  // #6 - Check if a JWT has expired client-side to avoid unnecessary API calls
+  function isTokenExpired(token) {
+    try {
+      var parts = token.split(".");
+      if (parts.length !== 3) return true;
+      var payload = JSON.parse(atob(parts[1]));
+      return payload.exp && Math.floor(Date.now() / 1000) > payload.exp;
+    } catch (e) {
+      return true;
+    }
+  }
+
   function getSession() {
     try {
       return JSON.parse(sessionStorage.getItem("cida_session")) || null;
@@ -51,6 +63,13 @@
       return null;
     }
 
+    // #6 - Proactively redirect if the token is already expired
+    if (session.token && isTokenExpired(session.token)) {
+      clearSession();
+      window.location.href = loginPage;
+      return null;
+    }
+
     return await CIDA_DB.findById("users", session.userId);
   }
 
@@ -61,6 +80,8 @@
     }
 
     button.addEventListener("click", function () {
+      // #28 - Disable button to prevent double-click race condition
+      this.disabled = true;
       clearSession();
       window.location.href = "login.html";
     });

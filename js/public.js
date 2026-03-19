@@ -52,13 +52,13 @@
       .map(function (row) {
         return (
           "<tr>" +
-          "<td>" + row.ownerDisplay + "</td>" +
-          "<td>" + row.typeDisplay + "</td>" +
-          "<td>" + row.makeModel + "</td>" +
-          "<td>" + row.countryOfOrigin + "</td>" +
-          "<td>" + row.location + "</td>" +
-          "<td>" + row.registrationDates + "</td>" +
-          "<td>" + row.registrationNumber + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(row.ownerDisplay) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(row.typeDisplay) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(row.makeModel) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(row.countryOfOrigin) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(row.location) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(row.registrationDates) + "</td>" +
+          "<td>" + CIDA_UTILS.escapeHtml(row.registrationNumber) + "</td>" +
           "</tr>"
         );
       })
@@ -79,7 +79,13 @@
       return;
     }
 
-    var rows = await getApprovedRows();
+    var rows;
+    try {
+      rows = await getApprovedRows();
+    } catch (e) {
+      console.error("Failed to load public register:", e);
+      rows = [];
+    }
 
     function applyFilters() {
       var formData = new FormData(form);

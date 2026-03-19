@@ -108,9 +108,14 @@
                 const result = await response.json();
                 
                 if(result.success) {
-                    CIDA_UTILS.setFeedback(feedback, result.message, "success");
-                    form.reset();
-                    setTimeout(() => window.location.href = 'contractor-login.html', 3000);
+                    // #37 - Show pending approval message; do not auto-redirect to login
+                    // since account requires admin approval before login will succeed
+                    CIDA_UTILS.setFeedback(
+                        feedback,
+                        result.message + " An administrator will review and approve your account. You may login once approved.",
+                        "success"
+                    );
+                    form.style.display = "none";
                 } else {
                     CIDA_UTILS.setFeedback(feedback, result.message, "error");
                 }
