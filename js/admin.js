@@ -494,11 +494,11 @@
         var rejectBtns = tbody.querySelectorAll('.btn-reject');
 
         approveBtns.forEach(function(btn) {
-           btn.addEventListener('click', function() { updateContractorStatus(this.dataset.id, 'approve', feedback); });
+          btn.addEventListener('click', function() { showContractorConfirm(this, 'approve', feedback); });
         });
 
         rejectBtns.forEach(function(btn) {
-           btn.addEventListener('click', function() { updateContractorStatus(this.dataset.id, 'reject', feedback); });
+          btn.addEventListener('click', function() { showContractorConfirm(this, 'reject', feedback); });
         });
 
       } else {
@@ -510,9 +510,32 @@
     }
   }
 
-  async function updateContractorStatus(id, action, feedbackEl) {
-    if(!confirm("Are you sure you want to " + action + " this contractor?")) return;
+  function showContractorConfirm(triggerBtn, action, feedbackEl) {
+    var actionRow = triggerBtn.closest('.action-row');
+    if (!actionRow) return;
+    var id = triggerBtn.dataset.id;
+    var label = action === 'approve' ? 'Approve' : 'Reject';
+    var savedHTML = actionRow.innerHTML;
 
+    actionRow.innerHTML =
+      '<span style="font-size:.85rem;margin-right:.5rem;">Confirm ' + label + '?</span>' +
+      '<button class="button button--primary btn-confirm-yes" style="padding:.25rem .75rem;font-size:.8rem;">Yes</button>' +
+      '<button class="button button--ghost btn-confirm-no" style="padding:.25rem .75rem;font-size:.8rem;">No</button>';
+
+    actionRow.querySelector('.btn-confirm-yes').addEventListener('click', function () {
+      updateContractorStatus(id, action, feedbackEl);
+    });
+    actionRow.querySelector('.btn-confirm-no').addEventListener('click', function () {
+      actionRow.innerHTML = savedHTML;
+      // Re-attach event listeners to the restored buttons
+      var newApprove = actionRow.querySelector('.btn-approve');
+      var newReject = actionRow.querySelector('.btn-reject');
+      if (newApprove) newApprove.addEventListener('click', function () { showContractorConfirm(this, 'approve', feedbackEl); });
+      if (newReject) newReject.addEventListener('click', function () { showContractorConfirm(this, 'reject', feedbackEl); });
+    });
+  }
+
+  async function updateContractorStatus(id, action, feedbackEl) {
     CIDA_UTILS.setFeedback(feedbackEl, "Updating...", "info");
 
     try {
